@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KeytoCoin Wallet – Blockchain Online</title>
+<style>
+body { background:#111;color:#0f0;font-family:monospace;padding:20px;overflow-x:hidden; }
+button,input{ padding:6px 10px;background:#222;color:#0f0;border:1px solid #0f0;border-radius:6px;margin:2px; }
+input{ width:250px; }
+#log{ max-height:200px;overflow-y:auto;background:#222;padding:10px;border:1px solid #0f0; }
+
+/* Coin rain */
+.coin{position:fixed;top:-60px;width:50px;height:50px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#ffd700,#c99700);box-shadow:0 0 10px #ff0,inset 0 0 10px #c90;display:flex;align-items:center;justify-content:center;font-weight:bold;color:#111;font-size:14px;animation:fall linear forwards;z-index:-1;}
+@keyframes fall{ to{ transform:translateY(110vh) rotate(360deg); opacity:0.8; } }
+
+/* Brick Text */
+.brick-text{ font-size:30px;font-weight:bold;display:inline-block;background:linear-gradient(90deg,#ff0000,#ff6600,#ffcc00);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:brickmove 3s linear infinite;}
+@keyframes brickmove{ 0%{background-position:0% center;} 100%{background-position:200% center;} }
+</style>
+</head>
+<body>
+
+<h2>🔐 KeytoCoin Wallet</h2>
+<button id="createWalletBtn">Create Wallet</button>
+<button id="clearWalletBtn">Clear Wallet</button>
+<button id="startMiningBtn">Start Mining</button>
+<button id="stopMiningBtn">Stop Mining</button>
+
+<p>Address: <span id="address"></span></p>
+<p>Private: <span id="privkey"></span></p>
+<p>Balance: <span id="balance">0</span> KTC</p>
+<hr>
+
+<h3>Mining</h3>
+<p>Mined Blocks: <span id="blocks">0</span></p>
+<p>Total Supply: <span id="supply">0</span> / 17,000,000 KTC</p>
+
+<h3>Send Transaction</h3>
+<input id="to" placeholder="Recipient Address">
+<input id="amount" type="number" placeholder="Amount">
+<button id="sendBtn">Send</button>
+
+<hr>
+<h3>Swap KTC</h3>
+<input id="swapTo" placeholder="KTC Coin (USDT/ETH)">
+<input id="swapAmount" type="number" placeholder="Number of KTC">
+<button id="swapBtn">Swap</button>
+<p id="swapResult"></p>
+
+<hr>
+<h3>Blockchain Log</h3>
+<pre id="log"></pre>
+
+<div align="center"><span class="brick-text">🧱KeytoCoin🧱</span></div>
+<div align="center"><span class="brick-text">🧱NEW-BLOCKCHAIN🧱</span></div>
+
+<script>
+const API = "https://your-backend-url.com"; // ganti sesuai backend
+
+let privKey=null, address=null, miningInterval=null;
+
+function log(msg){ const logEl=document.getElementById("log"); const div=document.createElement("div"); div.textContent=msg; logEl.prepend(div); }
+
+async function hash(data){ const buf=new TextEncoder().encode(data); const digest=await crypto.subtle.digest("SHA-256",buf); return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,"0")).join(""); }
+
+// Wallet
+async function createWallet(){
+  const arr=new Uint8Array(32); crypto.getRandomValues(arr);
+  privKey=Array.from(arr).map(b=>b.toString(16).padStart(2,"0")).join("");
+  const addrHash=await hash(privKey); address=addrHash.slice(0,32);
+  localStorage.setItem("KTC_Wallet",JSON.stringify({privKey,address}));
+  log("✅ Wallet created!"); updateDisplay();
+}
+
+function loadWallet(){
+  let data=localStorage.getItem("KTC_Wallet");
+  if(data){ let w=JSON.parse(data); privKey=w.privKey; address=w.address; log("🔄 Wallet loaded."); updateDisplay(); }
+}
+
+function clearWallet(){
+  localStorage.removeItem("KTC_Wallet"); privKey=null; address=null; stopMining(); updateDisplay(); log("🗑️ Wallet cleared."); 
+}
+
+// Wallet info
+async function getWalletInfo(){
+  if(!address) return {balance:0,blocks:0,supply:0};
+  try{ const res=await fetch(`${API}/wallet/${address}`); return await res.json(); }catch(e){ return {balance:0,blocks:0,supply:0}; }
+}
+
+async function updateDisplay(){
+  document.getElementById("address").innerText = address||"";
+  document.getElementById("privkey").innerText = privKey?privKey.slice(0,16)+"...":"";
+  const info = await getWalletInfo();
+  document.getElementById("balance").innerText = info.balance;
+  document.getElementById("blocks").innerText = info.blocks;
+  document.getElementById("supply").innerText = info.supply;
+}
+
+// Mining
+async function mineBlock(){
+  if(!address){ log("⚠️ Buat wallet dulu!"); return; }
+  try{
+    const res = await fetch(`${API}/mine`,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({address}) });
+    const data = await res.json();
+    if(data.error) log("⚠️ "+data.error); else log(`✅ ${data.message} Block #${data.block.index}`);
+    updateDisplay();
+  }catch(e){ log("⚠️ Server error") }
+}
+
+function startMining(){ if(!miningInterval && address){ miningInterval=setInterval(mineBlock,5000); log("⚙️ Mining started."); } }
+function stopMining(){ clearInterval(miningInterval); miningInterval=null; log("🛑 Mining stopped."); }
+
+// Transactions
+async function sendTransaction(){
+  if(!privKey){ log("⚠️ Create wallet first!"); return; }
+  let to=document.getElementById("to").value; let amount=parseInt(document.getElementById("amount").value);
+  if(!to || !amount || amount<=0){ log("⚠️ Invalid input"); return; }
+  const tx={from:address,to,amount,timestamp:Date.now()}; const sig=await hash(JSON.stringify(tx)); tx.signature=sig.slice(0,16);
+  try{
+    const res=await fetch(`${API}/send`,{method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(tx)});
+    const data=await res.json(); if(data.error) log("⚠️ "+data.error); else log("➕ "+data.message); updateDisplay();
+  }catch(e){ log("⚠️ Server error"); }
+}
+
+// Swap
+async function swapKTC(){
+  if(!address){ log("⚠️ Buat wallet dulu!"); return; }
+  let token=document.getElementById("swapTo").value.toUpperCase();
+  let amount=parseInt(document.getElementById("swapAmount").value);
+  if(!token || !amount || amount<=0){ log("⚠️ Input tidak valid."); return; }
+  const tx={from:address,token,amount,timestamp:Date.now()}; const sig=await hash(JSON.stringify(tx)); tx.signature=sig.slice(0,16);
+  try{
+    const res=await fetch(`${API}/swap`,{method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(tx)});
+    const data=await res.json(); if(data.error) log("⚠️ "+data.error);
+    else { log(`🔄 Swap ${amount} KTC → ${data.swapped} ${token}`); document.getElementById("swapResult").innerText = `✅ Swap berhasil: ${amount} KTC → ${data.swapped} ${token}`; updateDisplay(); }
+  }catch(e){ log("⚠️ Server error"); }
+}
+
+// Coin rain
+function createCoin(){ const coin=document.createElement("div"); coin.className="coin"; coin.innerText="KTC"; coin.style.left=Math.random()*window.innerWidth+"px"; coin.style.animationDuration=(3+Math.random()*2)+"s"; document.body.appendChild(coin); setTimeout(()=>coin.remove(),6000); }
+setInterval(createCoin,600);
+
+// Init
+window.onload=()=>{
+  document.getElementById("createWalletBtn").onclick=createWallet;
+  document.getElementById("clearWalletBtn").onclick=clearWallet;
+  document.getElementById("startMiningBtn").onclick=startMining;
+  document.getElementById("stopMiningBtn").onclick=stopMining;
+  document.getElementById("sendBtn").onclick=sendTransaction;
+  document.getElementById("swapBtn").onclick=swapKTC;
+  loadWallet();
+};
+</script>
+</body>
+</html>
