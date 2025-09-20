@@ -22,8 +22,7 @@ It allows users to **create wallets**, **mine blocks**, **send transactions**, a
 
 - **Transactions & Swap**  
   - Send KTC to other addresses  
-  - Swap KTC to other tokens (USDT, ETH, etc.)  
-
+  - Swap KTC to other tokens (IDR)
 - **Animations**  
   - Coin rain effect  
   - Animated brick-style text for KeytoCoin branding  
