@@ -1,6 +1,4 @@
 KeytoCoin Wallet – Blockchain
-
-█▄░█ █▀▀ █▄█ ▀█▀ █▀█ █▀█ █ █▄░█   █░▀█ ██▄ ░█░ ░█░ █▄█ █▀▄ █ █░▀█
 💰 **Blockchain Wallet Simulation + Mining + Swap to IDR**  
 🎮 Built with **HTML + CSS + JS**  
 ✨ Featuring **2D Coin Rain** + **Trigonometric Floating Coins**  
@@ -68,19 +66,4 @@ This project requires a **simple backend server** (Node.js/Express) with the fol
 - All addresses are stored in LocalStorage → visible in the **Saved Wallets** list.
 
 ---
-
-## 🎨 2D Animations
-
-- **Coin Rain (CSS + JS)**  
-  ```css
-  .coin {
-    position:fixed;
-    top:-60px;
-    width:50px;height:50px;
-    border-radius:50%;
-    background:radial-gradient(circle at 30% 30%,#ffd700,#c99700);
-    animation:fall linear forwards;
-  }
-  @keyframes fall {
-    to { transform:translateY(110vh) rotate(360deg); opacity:0.8; }
-  }
+█▄░█ █▀▀ █▄█ ▀█▀ █▀█ █▀█ █ █▄░█   █░▀█ ██▄ ░█░ ░█░ █▄█ █▀▄ █ █░▀█
