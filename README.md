@@ -1,6 +1,8 @@
 # 🧱 KeytoCoin Wallet – Online Blockchain
+
 █▄░█ █▀▀ █▄█ ▀█▀ █▀█ █▀█ █ █▄░█  
 █░▀█ ██▄ ░█░ ░█░ █▄█ █▀▄ █ █░▀█
+
 💰 **Blockchain Wallet Simulation + Mining + Swap to IDR**  
 🎮 Built with **HTML + CSS + JS**  
 ✨ Featuring **2D Coin Rain** + **Trigonometric Floating Coins**  
