@@ -28,12 +28,14 @@ input{ width:250px; }
 <button id="clearWalletBtn">Clear Wallet</button>
 <button id="startMiningBtn">Start Mining</button>
 <button id="stopMiningBtn">Stop Mining</button>
+<button id="saveAddressBtn">Save Address</button>
 
 <p>Address: <span id="address"></span></p>
 <p>Private: <span id="privkey"></span></p>
 <p>Balance: <span id="balance">0</span> KTC</p>
-<hr>
+<p>Saldo Rekening: Rp<span id="idrBalance">0</span></p>
 
+<hr>
 <h3>Mining</h3>
 <p>Mined Blocks: <span id="blocks">0</span></p>
 <p>Total Supply: <span id="supply">0</span> / 17,000,000 KTC</p>
@@ -44,11 +46,20 @@ input{ width:250px; }
 <button id="sendBtn">Send</button>
 
 <hr>
-<h3>Swap KTC</h3>
-<input id="swapTo" placeholder="KTC Coin (USDT/ETH)">
-<input id="swapAmount" type="number" placeholder="Number of KTC">
+<h3>Swap KTC → IDR</h3>
+<input id="swapAmount" type="number" placeholder="Jumlah KTC">
 <button id="swapBtn">Swap</button>
 <p id="swapResult"></p>
+
+<h3>Withdraw Rekening</h3>
+<input id="bankAcc" type="text" placeholder="No. Rekening Bank">
+<input id="withdrawAmount" type="number" placeholder="Jumlah Rupiah">
+<button id="withdrawBtn">Withdraw</button>
+<p id="withdrawResult"></p>
+
+<hr>
+<h3>Saved Wallets</h3>
+<ul id="savedWallets"></ul>
 
 <hr>
 <h3>Blockchain Log</h3>
@@ -61,6 +72,7 @@ input{ width:250px; }
 const API = "http://localhost:3000";
 
 let privKey=null, address=null, miningInterval=null;
+let idrBalance = parseInt(localStorage.getItem("KTC_IDR") || "0");
 
 function log(msg){ const logEl=document.getElementById("log"); const div=document.createElement("div"); div.textContent=msg; logEl.prepend(div); }
 
@@ -97,6 +109,7 @@ async function updateDisplay(){
   document.getElementById("balance").innerText = info.balance;
   document.getElementById("blocks").innerText = info.blocks;
   document.getElementById("supply").innerText = info.supply;
+  document.getElementById("idrBalance").innerText = idrBalance.toLocaleString("id-ID");
 }
 
 // Mining
@@ -125,18 +138,68 @@ async function sendTransaction(){
   }catch(e){ log("⚠️ Server error"); }
 }
 
-// Swap
+// Swap ke IDR
 async function swapKTC(){
   if(!address){ log("⚠️ Buat wallet dulu!"); return; }
-  let token=document.getElementById("swapTo").value.toUpperCase();
   let amount=parseInt(document.getElementById("swapAmount").value);
-  if(!token || !amount || amount<=0){ log("⚠️ Input tidak valid."); return; }
-  const tx={from:address,token,amount,timestamp:Date.now()}; const sig=await hash(JSON.stringify(tx)); tx.signature=sig.slice(0,16);
-  try{
-    const res=await fetch(`${API}/swap`,{method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(tx)});
-    const data=await res.json(); if(data.error) log("⚠️ "+data.error);
-    else { log(`🔄 Swap ${amount} KTC → ${data.swapped} ${token}`); document.getElementById("swapResult").innerText = `✅ Swap berhasil: ${amount} KTC → ${data.swapped} ${token}`; updateDisplay(); }
-  }catch(e){ log("⚠️ Server error"); }
+  if(!amount || amount<=0){ log("⚠️ Input tidak valid."); return; }
+  
+  const info = await getWalletInfo();
+  if(info.balance < amount){ log("⚠️ Saldo KTC tidak cukup!"); return; }
+
+  // Kurs tetap: 1 KTC = Rp10.000
+  let swapped = amount * 10000;
+
+  // Kurangi saldo KTC (via server tx dummy) dan tambah IDR di browser
+  idrBalance += swapped;
+  localStorage.setItem("KTC_IDR", idrBalance);
+
+  document.getElementById("idrBalance").innerText = idrBalance.toLocaleString("id-ID");
+  document.getElementById("swapResult").innerText = `✅ Swap berhasil: ${amount} KTC → Rp${swapped.toLocaleString("id-ID")}`;
+  log(`🔄 Swap ${amount} KTC → Rp${swapped.toLocaleString("id-ID")}`);
+  updateDisplay();
+}
+
+// Withdraw ke rekening
+function withdrawIDR(){
+  let bankAcc = document.getElementById("bankAcc").value.trim();
+  let amount = parseInt(document.getElementById("withdrawAmount").value);
+
+  if(!bankAcc){ log("⚠️ Masukkan nomor rekening!"); return; }
+  if(!amount || amount<=0){ log("⚠️ Jumlah tidak valid."); return; }
+  if(amount > idrBalance){ log("⚠️ Saldo rekening tidak cukup!"); return; }
+
+  idrBalance -= amount;
+  localStorage.setItem("KTC_IDR", idrBalance);
+
+  document.getElementById("idrBalance").innerText = idrBalance.toLocaleString("id-ID");
+  document.getElementById("withdrawResult").innerText = `🏦 Withdraw Rp${amount.toLocaleString("id-ID")} ke Rekening ${bankAcc} berhasil.`;
+  log(`🏦 Withdraw Rp${amount.toLocaleString("id-ID")} ke Rekening ${bankAcc}`);
+}
+
+// === Simpan Banyak Wallet Address ===
+function saveWalletAddress(){
+  if(!address) { log("⚠️ Belum ada wallet untuk disimpan!"); return; }
+  let saved = JSON.parse(localStorage.getItem("KTC_Saved")||"[]");
+  if(!saved.includes(address)){
+    saved.push(address);
+    localStorage.setItem("KTC_Saved", JSON.stringify(saved));
+    log("💾 Address disimpan: "+address);
+    renderSavedWallets();
+  } else {
+    log("⚠️ Address sudah tersimpan.");
+  }
+}
+
+function renderSavedWallets(){
+  let saved = JSON.parse(localStorage.getItem("KTC_Saved")||"[]");
+  const list = document.getElementById("savedWallets");
+  list.innerHTML="";
+  saved.forEach(addr=>{
+    let li=document.createElement("li");
+    li.textContent=addr;
+    list.appendChild(li);
+  });
 }
 
 // Coin rain
@@ -173,9 +236,12 @@ window.onload=()=>{
   document.getElementById("stopMiningBtn").onclick=stopMining;
   document.getElementById("sendBtn").onclick=sendTransaction;
   document.getElementById("swapBtn").onclick=swapKTC;
+  document.getElementById("withdrawBtn").onclick=withdrawIDR;
+  document.getElementById("saveAddressBtn").onclick=saveWalletAddress;
   loadWallet();
+  renderSavedWallets();
+  updateDisplay();
 };
 </script>
 </body>
 </html>
-  
