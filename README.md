@@ -66,4 +66,3 @@ This project requires a **simple backend server** (Node.js/Express) with the fol
 - All addresses are stored in LocalStorage → visible in the **Saved Wallets** list.
 
 ---
-█▄░█ █▀▀ █▄█ ▀█▀ █▀█ █▀█ █ █▄░█   █░▀█ ██▄ ░█░ ░█░ █▄█ █▀▄ █ █░▀█
