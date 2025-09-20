@@ -1,67 +1,46 @@
-# 🔐 KeytoCoin Wallet – Blockchain Online
+# 🧱 KeytoCoin Wallet – Online Blockchain
 
-![GitHub Repo Size](https://img.shields.io/github/repo-size/USERNAME/REPO?style=flat-square)
-![GitHub Pages](https://img.shields.io/badge/GitHub-Pages-blue?style=flat-square)
-![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+KeytoCoin Wallet is a **blockchain + crypto wallet simulation** built with **HTML + JavaScript**, integrated with a **Node.js Express backend**.  
+It supports mining, transactions, KTC-to-IDR swaps, and even bank withdrawals through the **Xendit API**.  
 
-KeytoCoin Wallet is a **browser-based blockchain wallet** for **KeytoCoin (KTC)**.  
-It allows users to **create wallets**, **mine blocks**, **send transactions**, and **swap KTC tokens** — all in the browser, with **interactive animations**.
+In addition to the core blockchain features, this wallet also comes with **advanced 2D animations** for an engaging visual experience 🎨✨.
 
 ---
 
-## 🌟 Features
+## 🚀 Key Features
 
-- **Wallet Management**  
-  - Generate a new wallet with a private key and address  
-  - Load and clear wallet from browser local storage  
+- 🔐 **Crypto Wallet**
+  - Generate a new wallet (auto private key & address)
+  - Save / load wallet using LocalStorage
+  - Multi-wallet support
 
-- **Mining**  
-  - Start/stop mining blocks  
-  - Real-time blockchain log  
-  - Display mined blocks and total supply  
+- ⚡ **Mining**
+  - Auto mine blocks every 5 seconds
+  - Track total supply (max 17 million KTC)
 
-- **Transactions & Swap**  
-  - Send KTC to other addresses  
-  - Swap KTC to other tokens (IDR)
-- **Animations**  
-  - Coin rain effect  
-  - Animated brick-style text for KeytoCoin branding  
+- 💸 **Transactions**
+  - Send KTC to another wallet address
+  - Simple signature system with hashing
 
----
+- 🔄 **Swap KTC → IDR**
+  - Fixed rate: 1 KTC = Rp10,000
+  - IDR balance stored in LocalStorage
 
-## 🖥️ Demo Animation
+- 🏦 **Withdraw IDR**
+  - Enter bank account number
+  - Deducts IDR balance
+  - Backend can be integrated with **Xendit Disbursement API** for real bank/e-wallet transfers
 
-![Coin Rain Animation](https://raw.githubusercontent.com/USERNAME/REPO/main/coin_rain.gif)
-
-> Replace the URL above with your uploaded GIF if different.
-
----
-
-## 🚀 How to Use
-
-1. **Open the HTML file**  
-   Open `keytocoin.html` in a modern browser.
-
-2. **Create Wallet**  
-   Click `Create Wallet` → Wallet address and private key will appear.
-
-3. **Start Mining**  
-   Click `Start Mining` to mine blocks. Click `Stop Mining` to stop.
-
-4. **Send Transactions**  
-   Enter recipient address and amount → Click `Send`.
-
-5. **Swap KTC**  
-   Enter token and amount → Click `Swap`. Result shows below.
-
-6. **View Blockchain Log**  
-   All activity is displayed in the log panel.
+- 🎨 **Advanced 2D Animations**
+  - 🌧️ **Coin Rain**: Golden coins fall randomly across the screen
+  - 🔵 **Trigonometric Floating Coins**: Blue coins move in a sinusoidal pattern
+  - 🧱 **Brick Gradient Text**: Titles with animated gradient color effects
 
 ---
 
-## ⚙️ Setup Backend
+## 🛠️ Backend Installation (Node.js + Express)
 
-Update this line in `keytocoin.html` to point to your **live backend server**:
-
-```javascript
-const API = "https://your-backend-url.com"; // Replace with live backend URL
+1. Clone / download this project  
+2. Install dependencies:
+   ```bash
+   npm install
