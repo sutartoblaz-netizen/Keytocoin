@@ -1,76 +1,76 @@
-# 🧱 KeytoCoin Wallet – Blockchain Online
+# 🧱 KeytoCoin Wallet – Online Blockchain
 
-█▄░█ █▀▀ █▄█ ▀█▀ █▀█ █▀█ █ █▄░█
-      █░▀█ ██▄ ░█░ ░█░ █▄█ █▀▄ █ █░▀█
-💰 **Dompet Blockchain Simulasi + Mining + Swap ke IDR**  
-🎮 Dibuat dengan **HTML + CSS + JS**  
-✨ Menyediakan animasi **2D Coin Rain** + **Trigonometri Coin Floating**  
+█▄░█ █▀▀ █▄█ ▀█▀ █▀█ █▀█ █ █▄░█    █░▀█ ██▄ ░█░ ░█░ █▄█ █▀▄ █ █░▀█  
 
----
-
-## 🚀 Fitur
-- 🔐 **Wallet** → buat, simpan, hapus, dan kelola alamat.
-- ⚒️ **Mining** → tambang block otomatis setiap 5 detik.
-- 💸 **Transaksi** → kirim KTC ke wallet lain.
-- 🔄 **Swap** → tukar KTC ke Rupiah (kurs tetap `1 KTC = Rp10.000`).
-- 🏦 **Withdraw** → tarik saldo Rupiah ke rekening.
-- 📂 **Saved Wallets** → simpan banyak address dalam LocalStorage.
-- 🎆 **Animasi 2D**  
-  - ✨ Coin Rain (emas berjatuhan)  
-  - 🌊 Trigonometric Floating Coin (bergerak sinusoidal)
+💰 **Blockchain Wallet Simulation + Mining + Swap to IDR**  
+🎮 Built with **HTML + CSS + JS**  
+✨ Featuring **2D Coin Rain** + **Trigonometric Floating Coins**  
 
 ---
 
-## 📸 Tampilan UI
+## 🚀 Features
+- 🔐 **Wallet** → create, save, clear, and manage addresses.
+- ⚒️ **Mining** → mine blocks automatically every 5 seconds.
+- 💸 **Transactions** → send KTC to other wallets.
+- 🔄 **Swap** → exchange KTC into Rupiah (fixed rate `1 KTC = Rp10,000`).
+- 🏦 **Withdraw** → withdraw Rupiah balance to bank account.
+- 📂 **Saved Wallets** → store multiple addresses in LocalStorage.
+- 🎆 **2D Animations**  
+  - ✨ Coin Rain (gold coins falling)  
+  - 🌊 Trigonometric Floating Coins (sinusoidal movement)
+
+---
+
+## 📸 UI Preview
 - **Coin Rain Animation:**  
-  Koin KTC jatuh dari atas layar seperti hujan emas.  
+  KTC coins fall from the top of the screen like golden rain.  
 - **Trig Floating Coins:**  
-  Koin KTC melayang mengikuti kurva sinus.  
+  KTC coins float smoothly following a sine wave.  
 - **Brick Gradient Text:**  
-  Logo teks bergerak dengan gradasi warna bata 🔥.  
+  Gradient brick-style animated logo 🔥.  
 
 ---
 
-## ⚙️ Cara Menggunakan
+## ⚙️ How to Use
 
-### 1. Jalankan Server API
-Proyek ini butuh **server backend** sederhana (Node.js/Express) yang melayani endpoint:
+### 1. Run the Backend API
+This project requires a **simple backend server** (Node.js/Express) with the following endpoints:
 
-- `POST /mine` → menambang block untuk wallet tertentu.  
-- `GET /wallet/:address` → cek saldo & blok wallet.  
-- `POST /send` → kirim transaksi antar wallet.  
+- `POST /mine` → mine a block for a given wallet address.  
+- `GET /wallet/:address` → check wallet balance & mined blocks.  
+- `POST /send` → send transactions between wallets.  
 
-> **Default API:** `http://localhost:3000`  
-> (Ubah di variabel `API` di kode HTML jika perlu.)
+> **Default API URL:** `http://localhost:3000`  
+> (You can change it in the `API` variable inside the HTML code.)
 
-### 2. Buka Wallet
-- Buka file **`index.html`** di browser.  
-- Klik tombol **Create Wallet** → otomatis menghasilkan `privKey` + `address`.  
+### 2. Open the Wallet
+- Open **`index.html`** in your browser.  
+- Click **Create Wallet** → generates `privKey` + `address`.  
 
 ### 3. Mining
-- Klik **Start Mining** untuk mulai menambang block.  
-- Klik **Stop Mining** untuk berhenti.  
-- Reward langsung masuk ke saldo wallet.
+- Click **Start Mining** to begin block mining.  
+- Click **Stop Mining** to halt mining.  
+- Rewards are automatically credited to your wallet.
 
-### 4. Transaksi
-- Masukkan alamat tujuan + jumlah KTC.  
-- Klik **Send** → transaksi terkirim via server API.
+### 4. Transactions
+- Enter the recipient address + KTC amount.  
+- Click **Send** → transaction is broadcast via the server API.
 
-### 5. Swap ke IDR
-- Isi jumlah KTC di kolom **Swap**.  
-- Klik **Swap** → otomatis mengurangi saldo KTC & menambah saldo Rupiah.  
+### 5. Swap to IDR
+- Enter KTC amount in the **Swap** field.  
+- Click **Swap** → your KTC is deducted & IDR balance increases.  
 
 ### 6. Withdraw
-- Masukkan **nomor rekening bank** + jumlah Rupiah.  
-- Klik **Withdraw** → saldo IDR berkurang, transaksi tercatat di log.
+- Enter your **bank account number** + Rupiah amount.  
+- Click **Withdraw** → IDR balance decreases & withdrawal is logged.
 
-### 7. Multi Wallet
-- Klik **Save Address** untuk menyimpan wallet.  
-- Semua address tersimpan di LocalStorage → muncul di daftar **Saved Wallets**.
+### 7. Multi-Wallet
+- Click **Save Address** to save the current wallet.  
+- All addresses are stored in LocalStorage → visible in the **Saved Wallets** list.
 
 ---
 
-## 🎨 Animasi 2D
+## 🎨 2D Animations
 
 - **Coin Rain (CSS + JS)**  
   ```css
@@ -84,5 +84,4 @@ Proyek ini butuh **server backend** sederhana (Node.js/Express) yang melayani en
   }
   @keyframes fall {
     to { transform:translateY(110vh) rotate(360deg); opacity:0.8; }
-  }let x=startX+Math.sin(t*speed)*amplitude;
-coin.style.transform=`translate(${x}px, ${y}px)`;
+  }
