@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>KeytoCoin Wallet – Blockchain Online</title>
+<title>KeytoCoin Wallet – Online Blockchain</title>
 <style>
 body { background:#111;color:#0f0;font-family:monospace;padding:20px;overflow-x:hidden; }
 button,input{ padding:6px 10px;background:#222;color:#0f0;border:1px solid #0f0;border-radius:6px;margin:2px; }
@@ -33,7 +33,7 @@ input{ width:250px; }
 <p>Address: <span id="address"></span></p>
 <p>Private: <span id="privkey"></span></p>
 <p>Balance: <span id="balance">0</span> KTC</p>
-<p>Saldo Rekening: Rp<span id="idrBalance">0</span></p>
+<p>Bank Balance: Rp<span id="idrBalance">0</span></p>
 
 <hr>
 <h3>Mining</h3>
@@ -47,13 +47,13 @@ input{ width:250px; }
 
 <hr>
 <h3>Swap KTC → IDR</h3>
-<input id="swapAmount" type="number" placeholder="Jumlah KTC">
+<input id="swapAmount" type="number" placeholder="Amount of KTC">
 <button id="swapBtn">Swap</button>
 <p id="swapResult"></p>
 
-<h3>Withdraw Rekening</h3>
-<input id="bankAcc" type="text" placeholder="No. Rekening Bank">
-<input id="withdrawAmount" type="number" placeholder="Jumlah Rupiah">
+<h3>Withdraw to Bank</h3>
+<input id="bankAcc" type="text" placeholder="Bank Account Number">
+<input id="withdrawAmount" type="number" placeholder="Amount in Rupiah">
 <button id="withdrawBtn">Withdraw</button>
 <p id="withdrawResult"></p>
 
@@ -114,7 +114,7 @@ async function updateDisplay(){
 
 // Mining
 async function mineBlock(){
-  if(!address){ log("⚠️ Buat wallet dulu!"); return; }
+  if(!address){ log("⚠️ Create a wallet first!"); return; }
   try{
     const res = await fetch(`${API}/mine`,{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({address}) });
     const data = await res.json();
@@ -138,56 +138,56 @@ async function sendTransaction(){
   }catch(e){ log("⚠️ Server error"); }
 }
 
-// Swap ke IDR
+// Swap to IDR
 async function swapKTC(){
-  if(!address){ log("⚠️ Buat wallet dulu!"); return; }
+  if(!address){ log("⚠️ Create wallet first!"); return; }
   let amount=parseInt(document.getElementById("swapAmount").value);
-  if(!amount || amount<=0){ log("⚠️ Input tidak valid."); return; }
+  if(!amount || amount<=0){ log("⚠️ Invalid input."); return; }
   
   const info = await getWalletInfo();
-  if(info.balance < amount){ log("⚠️ Saldo KTC tidak cukup!"); return; }
+  if(info.balance < amount){ log("⚠️ Not enough KTC balance!"); return; }
 
-  // Kurs tetap: 1 KTC = Rp10.000
+  // Fixed rate: 1 KTC = Rp10,000
   let swapped = amount * 10000;
 
-  // Kurangi saldo KTC (via server tx dummy) dan tambah IDR di browser
+  // Deduct KTC (via server dummy tx) and add IDR in browser
   idrBalance += swapped;
   localStorage.setItem("KTC_IDR", idrBalance);
 
   document.getElementById("idrBalance").innerText = idrBalance.toLocaleString("id-ID");
-  document.getElementById("swapResult").innerText = `✅ Swap berhasil: ${amount} KTC → Rp${swapped.toLocaleString("id-ID")}`;
+  document.getElementById("swapResult").innerText = `✅ Swap successful: ${amount} KTC → Rp${swapped.toLocaleString("id-ID")}`;
   log(`🔄 Swap ${amount} KTC → Rp${swapped.toLocaleString("id-ID")}`);
   updateDisplay();
 }
 
-// Withdraw ke rekening
+// Withdraw to bank
 function withdrawIDR(){
   let bankAcc = document.getElementById("bankAcc").value.trim();
   let amount = parseInt(document.getElementById("withdrawAmount").value);
 
-  if(!bankAcc){ log("⚠️ Masukkan nomor rekening!"); return; }
-  if(!amount || amount<=0){ log("⚠️ Jumlah tidak valid."); return; }
-  if(amount > idrBalance){ log("⚠️ Saldo rekening tidak cukup!"); return; }
+  if(!bankAcc){ log("⚠️ Enter a bank account number!"); return; }
+  if(!amount || amount<=0){ log("⚠️ Invalid amount!"); return; }
+  if(amount > idrBalance){ log("⚠️ Insufficient bank balance!"); return; }
 
   idrBalance -= amount;
   localStorage.setItem("KTC_IDR", idrBalance);
 
   document.getElementById("idrBalance").innerText = idrBalance.toLocaleString("id-ID");
-  document.getElementById("withdrawResult").innerText = `🏦 Withdraw Rp${amount.toLocaleString("id-ID")} ke Rekening ${bankAcc} berhasil.`;
-  log(`🏦 Withdraw Rp${amount.toLocaleString("id-ID")} ke Rekening ${bankAcc}`);
+  document.getElementById("withdrawResult").innerText = `🏦 Withdraw Rp${amount.toLocaleString("id-ID")} to Bank Account ${bankAcc} successful.`;
+  log(`🏦 Withdraw Rp${amount.toLocaleString("id-ID")} to Bank Account ${bankAcc}`);
 }
 
-// === Simpan Banyak Wallet Address ===
+// === Save Multiple Wallet Addresses ===
 function saveWalletAddress(){
-  if(!address) { log("⚠️ Belum ada wallet untuk disimpan!"); return; }
+  if(!address) { log("⚠️ No wallet to save!"); return; }
   let saved = JSON.parse(localStorage.getItem("KTC_Saved")||"[]");
   if(!saved.includes(address)){
     saved.push(address);
     localStorage.setItem("KTC_Saved", JSON.stringify(saved));
-    log("💾 Address disimpan: "+address);
+    log("💾 Address saved: "+address);
     renderSavedWallets();
   } else {
-    log("⚠️ Address sudah tersimpan.");
+    log("⚠️ Address already saved.");
   }
 }
 
