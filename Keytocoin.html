@@ -29,6 +29,7 @@ input{ width:250px; }
 <button id="startMiningBtn">Start Mining</button>
 <button id="stopMiningBtn">Stop Mining</button>
 <button id="saveAddressBtn">Save Address</button>
+<button id="togglePrivBtn">Show/Hide Private Key</button> <!-- 🔹 tombol baru -->
 
 <p>Address: <span id="address"></span></p>
 <p>Private: <span id="privkey"></span></p>
@@ -81,6 +82,7 @@ fetch(`${API}/create-wallet`)
 
 let privKey=null, address=null, miningInterval=null;
 let idrBalance = 0; // Reset all balances on load
+let showPriv = false; // 🔹 flag tampilkan private key
 
 // Reset all localStorage keys
 localStorage.removeItem("KTC_Wallet");
@@ -117,7 +119,9 @@ async function getWalletInfo(){
 
 async function updateDisplay(){
   document.getElementById("address").innerText = address||"";
-  document.getElementById("privkey").innerText = privKey?privKey.slice(0,16)+"...":"";
+  document.getElementById("privkey").innerText = privKey
+    ? (showPriv ? privKey : privKey.slice(0,16)+"...")
+    : "";
   const info = await getWalletInfo();
   document.getElementById("balance").innerText = info.balance;
   document.getElementById("blocks").innerText = info.blocks;
@@ -212,6 +216,7 @@ window.onload=()=>{
   document.getElementById("swapBtn").onclick=swapKTC;
   document.getElementById("withdrawBtn").onclick=withdrawIDR;
   document.getElementById("saveAddressBtn").onclick=saveWalletAddress;
+  document.getElementById("togglePrivBtn").onclick=()=>{ showPriv=!showPriv; updateDisplay(); }; // 🔹 toggle privkey
   renderSavedWallets();
   updateDisplay();
 };
