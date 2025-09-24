@@ -136,7 +136,7 @@ app.listen(HTTP_PORT, () => console.log(`✅ HTTP Server running at http://local
 // P2P server
 const wss = new WebSocket.Server({ port: P2P_PORT });
 wss.on("connection", ws => initConnection(ws));
-console.log("🌐📡 P2P WebSocket running on port:", P2P_PORT);
+console.log("🌏📡 P2P WebSocket running on port:", P2P_PORT);
 
 // Connect to initial peers
 peers.forEach(connectToPeer);
