@@ -63,6 +63,11 @@ function handleMessage(ws, data) {
   }
 }
 
+// 🔔 Notifikasi transaksi masuk ke penerima
+    console.log(`🔔 Notifikasi: ${msg.data.amount} ma>
+  }
+}
+
 // === HTTP SERVER (API) ===
 const app = express();
 app.use(bodyParser.json());
