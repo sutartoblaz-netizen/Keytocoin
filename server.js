@@ -13,7 +13,7 @@ let balances = {};
 let supply = 0;
 const MAX_SUPPLY = 17000000;
 const MIN_REWARD = 1;
-const DEFAULT_REWARD = 10;
+const DEFAULT_REWARD = 1;
 
 // === HASH FUNCTION ===
 function sha256(data) {
