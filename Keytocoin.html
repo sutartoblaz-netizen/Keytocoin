@@ -178,7 +178,7 @@ function renderSavedWallets(){
   
 // Coin rain  
 function createCoin(){ const coin=document.createElement("div"); coin.className="coin"; coin.innerText="KTC"; coin.style.left=Math.random()*window.innerWidth+"px"; coin.style.animationDuration=(3+Math.random()*2)+"s"; document.body.appendChild(coin); setTimeout(()=>coin.remove(),6000); }  
-setInterval(createCoin,600);    
+setInterval(createCoin,1000);    
   
 // Init  
 window.onload=()=>{  
