@@ -2,34 +2,51 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>KeytoCoin Wallet - ECDSA </title>
+<title>KeytoCoin Wallet</title>
 <style>
 body { background:#111;color:#0f0;font-family:monospace;padding:20px;overflow-x:hidden; }
-button,input,select{ padding:6px 10px;background:#222;color:#0f0;border:1px solid #0f0;border-radius:6px;margin:2px; }
+button,input{ padding:6px 10px;background:#222;color:#0f0;border:1px solid #0f0;border-radius:6px;margin:2px; }
 input{ width:250px; }
 #log{ max-height:200px;overflow-y:auto;background:#222;padding:10px;border:1px solid #0f0; }
+
 /* Coin rain */
-.coin{position:fixed;top:-60px;width:50px;height:50px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#ffd700,#c99700);box-shadow:0 0 10px #ff0,inset 0 0 10px #c90;display:flex;align-items:center;justify-content:center;font-weight:bold;color:#111;font-size:14px;animation:fall linear forwards;z-index:-1;}
+.coin{
+  position:fixed;top:-60px;width:50px;height:50px;border-radius:50%;
+  background:radial-gradient(circle at 30% 30%,#ffd700,#c99700);
+  box-shadow:0 0 10px #ff0,inset 0 0 10px #c90;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:bold;color:#111;font-size:14px;
+  animation:fall linear forwards;z-index:-1;
+}
 @keyframes fall{ to{ transform:translateY(110vh) rotate(360deg); opacity:0.8; } }
-/* Trigonometric coin */
-.trigCoin{position:fixed;top:0;width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#0ff,#08f);display:flex;align-items:center;justify-content:center;color:#111;font-weight:bold;font-size:12px;box-shadow:0 0 10px #0ff,inset 0 0 5px #08f;}
+
+/* Trigonometric Coin */
+.trigCoin{
+  position:fixed;top:0;width:40px;height:40px;border-radius:50%;
+  background:radial-gradient(circle at 30% 30%,#0ff,#08f);
+  display:flex;align-items:center;justify-content:center;
+  color:#111;font-weight:bold;font-size:12px;
+  box-shadow:0 0 10px #0ff,inset 0 0 5px #08f;
+}
+
 /* Brick Text */
-.brick-text{ font-size:30px;font-weight:bold;display:inline-block;background:linear-gradient(90deg,#ff0000,#ff6600,#ffcc00);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:brickmove 3s linear infinite;}
-@keyframes brickmove{ 0%{background-position:0% center;} 100%{background-position:200% center;} }
+.brick-text{
+  font-size:30px;font-weight:bold;display:inline-block;
+  background:linear-gradient(90deg,#ff0000,#ff6600,#ffcc00);
+  background-size:200% auto;
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  animation:brickmove 3s linear infinite;
+}
+@keyframes brickmove{
+  0%{background-position:0% center;}
+  100%{background-position:200% center;}
+}
 </style>
-
-<!-- Libraries -->
-<!-- elliptic for secp256k1 -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/elliptic/6.5.4/elliptic.min.js"></script>
-<!-- hash.js for RIPEMD160 (and other hashes) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/hash.js/1.1.7/hash.min.js"></script>
-<!-- js-sha3 for keccak256 (ethereum address) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha3/0.8.0/sha3.min.js"></script>
-
 </head>
-<body>
-<h2>  🪙Keytocoin Wallet (KTC)</h2>
 
+<body>
+<h2>🔐 KeytoCoin Wallet </h2>
 <button id="createWalletBtn">Create Wallet</button>
 <button id="clearWalletBtn">Clear Wallet</button>
 <button id="startMiningBtn">Start Mining</button>
@@ -37,18 +54,8 @@ input{ width:250px; }
 <button id="saveAddressBtn">Save Address</button>
 <button id="togglePrivBtn">Show/Hide Private Key</button>
 
-<p>
-Active Address Type:
-<select id="addressType">
-  <option value="B">B — Hex32 (SHA256(pub) slice(0,32)) (default, compatible)</option>
-  <option value="A">A — Bitcoin-like (SHA256 → RIPEMD160 → Base58Check)</option>
-  <option value="C">C — Ethereum-like (0x + keccak256(pub) last 40 hex)</option>
-</select>
-</p>
-
 <p>Address: <span id="address"></span></p>
 <p>Private: <span id="privkey"></span></p>
-<p>Public: <span id="pubkey"></span></p>
 <p>Balance: <span id="balance">0</span> KTC</p>
 <p>Bank Balance: Rp<span id="idrBalance">0</span></p>
 
@@ -86,180 +93,62 @@ Active Address Type:
 <div align="center"><span class="brick-text">⛓⛏BLOKCHAIN⛏⛓</span></div>
 
 <script>
-/*
-  KeytoCoin Wallet — Full HTML ECDSA Edition
-  - supports address types A (Bitcoin-like), B (hex32), C (Ethereum-like)
-  - signs transactions with ECDSA (secp256k1)
-  - sends {from,to,amount,signature,pubKey} to server
-  - hash signed = sha256(from + to + amount) (uses subtle crypto)
-*/
-
-// API endpoint (change if necessary)
 const API = "http://localhost:3005";
 
-// Quick probes (optional)
-fetch(`${API}/balance`).then(r=>r.json()).then(d=>console.log("Balance:",d)).catch(()=>{});
-fetch(`${API}/create-wallet`).then(r=>r.json()).then(d=>console.log("Server create-wallet:",d)).catch(()=>{});
+fetch(`${API}/balance`).then(r=>r.json()).then(d=>console.log(d));
+fetch(`${API}/create-wallet`).then(r=>r.json()).then(d=>console.log(d));
 
-// libs
-const EC = elliptic.ec;
-const ec = new EC('secp256k1');
-
-// small base58 (Bitcoin) encoder
-const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-function base58Encode(hex) {
-  // hex string -> big integer -> base58
-  if(!hex || hex.length % 2) return "";
-  let bytes = [];
-  for(let i=0;i<hex.length;i+=2) bytes.push(parseInt(hex.slice(i,i+2),16));
-  // count leading zeros
-  let zeros = 0;
-  while(zeros < bytes.length && bytes[zeros] === 0) zeros++;
-  // convert
-  let payload = bytes.slice();
-  const b58 = [];
-  while(payload.length) {
-    let carry = 0;
-    const newPayload = [];
-    for(let i=0;i<payload.length;i++){
-      carry = carry*256 + payload[i];
-      const q = Math.floor(carry / 58);
-      const r = carry % 58;
-      if(newPayload.length || q) newPayload.push(q);
-      carry = r;
-    }
-    b58.push(BASE58_ALPHABET[carry]);
-    payload = newPayload;
-  }
-  // leading zeros => '1's
-  for(let i=0;i<zeros;i++) b58.push('1');
-  return b58.reverse().join('');
-}
-
-// Base58Check: version(0x00) + payload + checksum(4 bytes)
-function base58CheckFromRipemd(hexRipemd) {
-  // version byte 00
-  const versionHex = "00";
-  const data = versionHex + hexRipemd;
-  // double sha256
-  const digest1 = sha256_sync(hexToUint8(data));
-  const digest2 = sha256_sync(hexToUint8(digest1));
-  const checksum = digest2.slice(0,8); // 4 bytes => 8 hex chars
-  const full = data + checksum;
-  return base58Encode(full);
-}
-
-// utils sync sha256 (used for checksum) using subtle isn't sync; provide small sync sha256 via crypto.subtle? Not sync.
-// We'll implement a small sync sha256 using built-in crypto.subtle via async wrapper; but for base58Check we need checksum sync-ish.
-// We'll create async function to compute base58check instead.
-function hexToUint8(hex) {
-  const out = new Uint8Array(hex.length/2);
-  for(let i=0;i<hex.length;i+=2) out[i/2] = parseInt(hex.slice(i,i+2),16);
-  return out;
-}
-async function sha256_hex_async(dataUint8) {
-  const buf = await crypto.subtle.digest("SHA-256", dataUint8);
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
-}
-function sha256_sync(u8) {
-  // fallback tiny sync sha256 using hash.js if available
-  if(typeof hashjs !== 'undefined' || typeof hash !== 'undefined') {
-    // hash.js exposes hash.sha256().update(...)
-    const h = (typeof hashjs !== 'undefined' ? hashjs : hash).sha256().update(u8).digest('hex');
-    return h;
-  }
-  // last resort (shouldn't happen in modern browsers)
-  throw new Error("No sync sha256 available");
-}
-
-async function base58CheckAsync(hexRipemd) {
-  const versionHex = "00";
-  const data = versionHex + hexRipemd;
-  const d1 = await sha256_hex_async(hexToUint8(data));
-  const d2 = await sha256_hex_async(hexToUint8(d1));
-  const checksum = d2.slice(0,8);
-  const full = data + checksum;
-  return base58Encode(full);
-}
-
-// helper: hex from subtle sha256
-async function hashHex(data){
-  const buf = new TextEncoder().encode(data);
-  const digest = await crypto.subtle.digest("SHA-256", buf);
-  return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,"0")).join("");
-}
-
-// RIPEMD160 via hash.js (available as window.hash or window.hashjs)
-function ripemd160HexFromHex(hex) {
-  const u8 = hexToUint8(hex);
-  const h = (typeof hashjs !== 'undefined' ? hashjs : hash);
-  return h.ripemd160().update(u8).digest('hex');
-}
-
-// keccak256 (js-sha3)
-function keccak256HexFromHex(pubHex) {
-  // pubHex is hex string (uncompressed or compressed). For eth, use uncompressed public key WITHOUT 0x04 prefix? Standard: keccak on public key (without 0x04) and take last 40 hex.
-  let hex = pubHex;
-  if(hex.startsWith('04')) hex = hex.slice(2);
-  const bytes = hexToUint8(hex);
-  const hexStr = Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('');
-  return sha3_256.hex(hexStr); // returns hex string of keccak256
-}
-
-// base helper to pick address type
-async function deriveAddressesFromPub(pubHex) {
-  // B: hex32 = sha256(pub) slice 0..31 hex (32 chars)
-  const shaPub = await (async ()=> {
-    const buf = new TextEncoder().encode(pubHex);
-    // we want sha256 of raw pubHex string (consistent with server's earlier method), so use hashHex(pubHex)
-    return await hashHex(pubHex);
-  })();
-
-  const addrB = shaPub.slice(0,32);
-
-  // A: Bitcoin-like: sha256(pub) -> ripemd160 -> base58check
-  // We'll compute ripemd160 on raw shaPub bytes
-  const ripemd = ripemd160HexFromHex(shaPub);
-  const addrA = await base58CheckAsync(ripemd);
-
-  // C: Ethereum-like: keccak256(pub without 0x04) -> last 40 hex, prefix 0x
-  const keccakHex = keccak256HexFromHex(pubHex);
-  const addrC = "0x" + keccakHex.slice(-40);
-
-  return { A: addrA, B: addrB, C: addrC, shaPub };
-}
-
-// small helper to convert Uint8Array to hex
-function u8ToHex(u8) {
-  return Array.from(u8).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-
-// Logging
-function log(msg){ const logEl=document.getElementById("log"); const div=document.createElement("div"); div.textContent=msg; logEl.prepend(div); }
-
-// Globals
-let privKey=null, pubKey=null, address=null, addressType='B', miningInterval=null;
+let privKey=null, address=null, miningInterval=null;
 let idrBalance = 0;
 let showPriv = false;
 
-// Reset localStorage as original did
 localStorage.removeItem("KTC_Wallet");
 localStorage.removeItem("KTC_IDR");
 localStorage.removeItem("KTC_Saved");
 
-// render saved wallets
-function renderSavedWallets(){
-  let saved = JSON.parse(localStorage.getItem("KTC_Saved")||"[]");
-  const list = document.getElementById("savedWallets");
-  list.innerHTML="";
-  saved.forEach(addr=>{ let li=document.createElement("li"); li.textContent=addr; list.appendChild(li); });
+function log(msg){
+  const logEl=document.getElementById("log");
+  const div=document.createElement("div");
+  div.textContent=msg; logEl.prepend(div);
 }
 
-// update display
+async function hash(data){
+  const buf=new TextEncoder().encode(data);
+  const digest=await crypto.subtle.digest("SHA-256",buf);
+  return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+async function createWallet(){
+  const arr=new Uint8Array(32); crypto.getRandomValues(arr);
+  privKey=Array.from(arr).map(b=>b.toString(16).padStart(2,"0")).join("");
+  const addrHash=await hash(privKey); address=addrHash.slice(0,32);
+  localStorage.setItem("KTC_Wallet",JSON.stringify({privKey,address}));
+  idrBalance=0; localStorage.setItem("KTC_IDR",idrBalance);
+  log("✅ Wallet created!"); updateDisplay();
+}
+
+function clearWallet(){
+  localStorage.removeItem("KTC_Wallet");
+  privKey=null; address=null;
+  stopMining(); updateDisplay();
+  log("🗑️ Wallet cleared.");
+  localStorage.removeItem("KTC_Saved");
+  renderSavedWallets();
+  idrBalance=0; localStorage.setItem("KTC_IDR",0);
+}
+
+async function getWalletInfo(){
+  if(!address) return {balance:0,blocks:0,supply:0};
+  try{
+    const res=await fetch(`${API}/wallet/${address}`);
+    return await res.json();
+  }catch(e){ return {balance:0,blocks:0,supply:0}; }
+}
+
 async function updateDisplay(){
   document.getElementById("address").innerText = address||"";
-  document.getElementById("privkey").innerText = privKey ? (showPriv ? privKey : privKey.slice(0,16)+"...") : "";
-  document.getElementById("pubkey").innerText = pubKey ? (pubKey.slice(0,16)+"...") : "";
+  document.getElementById("privkey").innerText =
+    privKey ? (showPriv ? privKey : privKey.slice(0,16)+"...") : "";
   const info = await getWalletInfo();
   document.getElementById("balance").innerText = info.balance;
   document.getElementById("blocks").innerText = info.blocks;
@@ -267,182 +156,148 @@ async function updateDisplay(){
   document.getElementById("idrBalance").innerText = idrBalance.toLocaleString("id-ID");
 }
 
-// get wallet info from server
-async function getWalletInfo(){
-  if(!address) return {balance:0,blocks:0,supply:0};
-  try{
-    const res = await fetch(`${API}/wallet/${address}`);
-    return await res.json();
-  }catch(e){
-    return {balance:0,blocks:0,supply:0};
-  }
-}
-
-// Create ECDSA wallet (and derive addresses)
-async function createWallet(){
-  const key = ec.genKeyPair();
-  privKey = key.getPrivate('hex');       // 64 hex chars
-  pubKey = key.getPublic('hex');         // uncompressed hex (starts with '04')
-
-  // derive addresses A/B/C
-  const addrs = await deriveAddressesFromPub(pubKey);
-  // pick active based on dropdown
-  addressType = document.getElementById("addressType").value || 'B';
-  if(addressType === 'B') address = addrs.B;
-  else if(addressType === 'A') address = addrs.A;
-  else address = addrs.C;
-
-  // store wallet including pubKey for re-use (but we're resetting storage at load per original)
-  localStorage.setItem("KTC_Wallet", JSON.stringify({privKey,pubKey,addressType,address}));
-  idrBalance = 0; localStorage.setItem("KTC_IDR", idrBalance);
-  log("✅ ECDSA Wallet created! Type:"+addressType+" Address:"+address);
-  updateDisplay();
-}
-
-// Clear wallet
-function clearWallet(){
-  localStorage.removeItem("KTC_Wallet");
-  privKey=null; pubKey=null; address=null;
-  stopMining();
-  updateDisplay();
-  log("🗑️ Wallet cleared.");
-  localStorage.removeItem("KTC_Saved"); renderSavedWallets();
-  idrBalance=0; localStorage.setItem("KTC_IDR",0);
-}
-
-// Mining request to server
 async function mineBlock(){
   if(!address){ log("⚠️ Create a wallet first!"); return; }
   try{
     const res = await fetch(`${API}/mine`,{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({address})
+      body:JSON.stringify({address})
     });
     const data = await res.json();
     if(data.error) log("⚠️ "+data.error);
     else log(`✅ ${data.message} Block #${data.block.index}`);
     updateDisplay();
-  }catch(e){
-    log("⚠️ Server error");
+  }catch(e){ log("⚠️ Server error"); }
+}
+
+function startMining(){
+  if(!miningInterval && address){
+    miningInterval=setInterval(mineBlock,5000);
+    log("⚙️ Mining started.");
   }
 }
 
-function startMining(){ if(!miningInterval && address){ miningInterval=setInterval(mineBlock,5000); log("⚙️ Mining started."); } }
-function stopMining(){ clearInterval(miningInterval); miningInterval=null; log("🛑 Mining stopped."); }
+function stopMining(){
+  clearInterval(miningInterval);
+  miningInterval=null;
+  log("🛑 Mining stopped.");
+}
 
-// Send transaction with ECDSA signature (DER hex) and pubKey
 async function sendTransaction(){
   if(!privKey){ log("⚠️ Create wallet first!"); return; }
-  let to = document.getElementById("to").value.trim();
-  let amount = parseInt(document.getElementById("amount").value);
+  let to=document.getElementById("to").value;
+  let amount=parseInt(document.getElementById("amount").value);
   if(!to || !amount || amount<=0){ log("⚠️ Invalid input"); return; }
 
-  // construct tx object to sign (server expects sha256(from+to+amount))
-  const tx = { from: address, to, amount };
-
-  // compute message hash (sha256 of concatenated strings)
-  const msgPlain = String(tx.from) + String(tx.to) + String(tx.amount);
-  const msgHashHex = await hashHex(msgPlain); // hex string
-
-  // sign using elliptic
-  const key = ec.keyFromPrivate(privKey, 'hex');
-  const signature = key.sign(msgHashHex, {canonical: true});
-  const sigHex = signature.toDER('hex');
-
-  // attach signature + pubKey
-  tx.signature = sigHex;
-  tx.pubKey = pubKey;
+  const tx={from:address,to,amount,timestamp:Date.now()};
+  const sig=await hash(JSON.stringify(tx)); tx.signature=sig.slice(0,16);
 
   try{
-    const res = await fetch(`${API}/send`,{
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify(tx)
+    const res=await fetch(`${API}/send`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(tx)
     });
-    const data = await res.json();
+    const data=await res.json();
     if(data.error) log("⚠️ "+data.error);
-    else { log("➕ "+data.message); updateDisplay(); }
-  }catch(e){
-    log("⚠️ Server error");
-  }
+    else log("➕ "+data.message);
+    updateDisplay();
+  }catch(e){ log("⚠️ Server error"); }
 }
 
-// Swap KTC -> IDR (local logic)
 async function swapKTC(){
   if(!address){ log("⚠️ Create wallet first!"); return; }
-  let amount = parseInt(document.getElementById("swapAmount").value);
+  let amount=parseInt(document.getElementById("swapAmount").value);
   if(!amount || amount<=0){ log("⚠️ Invalid input."); return; }
+
   const info = await getWalletInfo();
-  if(info.balance < amount){ log("⚠️ Not enough KTC balance!"); return; }
+  if(info.balance < amount){
+    log("⚠️ Not enough KTC balance!");
+    return;
+  }
+
   let swapped = amount * 10000;
   idrBalance += swapped;
   localStorage.setItem("KTC_IDR", idrBalance);
+
   document.getElementById("idrBalance").innerText = idrBalance.toLocaleString("id-ID");
-  document.getElementById("swapResult").innerText = `✅ Swap ${amount} KTC → Rp${swapped.toLocaleString("id-ID")}`;
+  document.getElementById("swapResult").innerText =
+    `✅ Swap ${amount} KTC → Rp${swapped.toLocaleString("id-ID")}`;
+
   log(`🔄 Swap ${amount} KTC → Rp${swapped.toLocaleString("id-ID")}`);
   updateDisplay();
 }
 
-// Withdraw to bank (local logic)
 function withdrawIDR(){
   let bankAcc = document.getElementById("bankAcc").value.trim();
   let amount = parseInt(document.getElementById("withdrawAmount").value);
+
   if(!bankAcc || !amount || amount<=0){ log("⚠️ Invalid input!"); return; }
   if(amount>idrBalance){ log("⚠️ Insufficient bank balance!"); return; }
+
   idrBalance -= amount;
   localStorage.setItem("KTC_IDR", idrBalance);
+
   document.getElementById("idrBalance").innerText = idrBalance.toLocaleString("id-ID");
-  document.getElementById("withdrawResult").innerText=`🏦 Withdraw Rp${amount.toLocaleString("id-ID")} to Bank ${bankAcc} successful.`;
+  document.getElementById("withdrawResult").innerText =
+    `🏦 Withdraw Rp${amount.toLocaleString("id-ID")} to Bank ${bankAcc} successful.`;
+
   log(`🏦 Withdraw Rp${amount.toLocaleString("id-ID")} to Bank ${bankAcc}`);
 }
 
-// Save active address to list
 function saveWalletAddress(){
   if(!address) { log("⚠️ No wallet to save!"); return; }
   let saved = JSON.parse(localStorage.getItem("KTC_Saved")||"[]");
-  if(!saved.includes(address)){ saved.push(address); localStorage.setItem("KTC_Saved", JSON.stringify(saved)); log("💾 Address saved: "+address); renderSavedWallets(); } else log("⚠️ Address already saved.");
+  if(!saved.includes(address)){
+    saved.push(address);
+    localStorage.setItem("KTC_Saved", JSON.stringify(saved));
+    log("💾 Address saved: "+address);
+    renderSavedWallets();
+  } else log("⚠️ Address already saved.");
 }
 
-// Coin rain
-function createCoin(){ const coin=document.createElement("div"); coin.className="coin"; coin.innerText="KTC"; coin.style.left=Math.random()*window.innerWidth+"px"; coin.style.animationDuration=(3+Math.random()*2)+"s"; document.body.appendChild(coin); setTimeout(()=>coin.remove(),6000); }
-setInterval(createCoin,1000);
-
-// Helpers: derive address when user changes address type AFTER wallet created
-async function switchAddressType(newType) {
-  addressType = newType;
-  if(!pubKey) return;
-  const addrs = await deriveAddressesFromPub(pubKey);
-  if(addressType === 'B') address = addrs.B;
-  else if(addressType === 'A') address = addrs.A;
-  else address = addrs.C;
-  // persist selection
-  const saved = JSON.parse(localStorage.getItem("KTC_Wallet")||"null");
-  if(saved) {
-    saved.addressType = addressType;
-    saved.address = address;
-    localStorage.setItem("KTC_Wallet", JSON.stringify(saved));
-  }
-  log("🔁 Switched address type -> " + addressType + " Address: " + address);
-  updateDisplay();
+function renderSavedWallets(){
+  let saved = JSON.parse(localStorage.getItem("KTC_Saved")||"[]");
+  const list=document.getElementById("savedWallets");
+  list.innerHTML="";
+  saved.forEach(addr=>{
+    let li=document.createElement("li");
+    li.textContent=addr;
+    list.appendChild(li);
+  });
 }
 
-// Init
-window.onload = ()=>{
-  document.getElementById("createWalletBtn").onclick = createWallet;
-  document.getElementById("clearWalletBtn").onclick = clearWallet;
-  document.getElementById("startMiningBtn").onclick = startMining;
-  document.getElementById("stopMiningBtn").onclick = stopMining;
-  document.getElementById("sendBtn").onclick = sendTransaction;
-  document.getElementById("swapBtn").onclick = swapKTC;
-  document.getElementById("withdrawBtn").onclick = withdrawIDR;
-  document.getElementById("saveAddressBtn").onclick = saveWalletAddress;
-  document.getElementById("togglePrivBtn").onclick = ()=>{ showPriv=!showPriv; updateDisplay(); };
-  document.getElementById("addressType").onchange = (e)=> switchAddressType(e.target.value);
+/* ========= COIN RAIN ========= */
+function createCoin(){
+  const coin=document.createElement("div");
+  coin.className="coin";
+  coin.innerText="KTC";
+  coin.style.left=Math.random()*window.innerWidth+"px";
+  coin.style.animationDuration=(3+Math.random()*2)+"s";
+  document.body.appendChild(coin);
+  setTimeout(()=>coin.remove(),6000);
+}
+
+/* 🔥 HIDUPKAN HUJAN COIN — Aktif 24/7 */
+setInterval(createCoin,600);
+/* ================================= */
+
+/* Init */
+window.onload=()=>{
+  document.getElementById("createWalletBtn").onclick=createWallet;
+  document.getElementById("clearWalletBtn").onclick=clearWallet;
+  document.getElementById("startMiningBtn").onclick=startMining;
+  document.getElementById("stopMiningBtn").onclick=stopMining;
+  document.getElementById("sendBtn").onclick=sendTransaction;
+  document.getElementById("swapBtn").onclick=swapKTC;
+  document.getElementById("withdrawBtn").onclick=withdrawIDR;
+  document.getElementById("saveAddressBtn").onclick=saveWalletAddress;
+  document.getElementById("togglePrivBtn").onclick=()=>{ showPriv=!showPriv; updateDisplay(); };
   renderSavedWallets();
   updateDisplay();
 };
-
 </script>
+
 </body>
 </html>
