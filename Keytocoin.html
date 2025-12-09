@@ -93,7 +93,7 @@ input{ width:250px; }
 <div align="center"><span class="brick-text">⛓⛏BLOKCHAIN⛏⛓</span></div>
 
 <script>
-const API = "http://localhost:3003";
+const API = "http://localhost:3005";
 
 fetch(`${API}/balance`).then(r=>r.json()).then(d=>console.log(d));
 fetch(`${API}/create-wallet`).then(r=>r.json()).then(d=>console.log(d));
