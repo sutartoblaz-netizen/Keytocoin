@@ -48,6 +48,7 @@ input{ width:250px; }
 <body>
 <h2>🪙 KeytoCoin Wallet </h2>
 <button id="createWalletBtn">Create Wallet</button>
+<button id="importWalletBtn">Import Wallet</button>
 <button id="clearWalletBtn">Clear Wallet</button>
 <button id="startMiningBtn">Start Mining</button>
 <button id="stopMiningBtn">Stop Mining</button>
@@ -62,7 +63,7 @@ input{ width:250px; }
 <hr>
 <h3>Mining</h3>
 <p>Mined Blocks: <span id="blocks">0</span></p>
-<p>Total Supply: <span id="supply">0</span> / 17,000,000 KTC</p>
+<p>Total Supply: <span id="supply">0</span> / 17,000,000 KTC</span>
 
 <h3>Send Transaction</h3>
 <input id="to" placeholder="Recipient Address">
@@ -91,6 +92,22 @@ input{ width:250px; }
 
 <div align="center"><span class="brick-text">⛓⛏KEYTOCOIN⛏⛓</span></div>
 <div align="center"><span class="brick-text">⛓⛏BLOKCHAIN⛏⛓</span></div>
+
+<!-- Import Wallet Modal -->
+<div id="importModal" 
+     style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.8); backdrop-filter:blur(3px);
+     align-items:center; justify-content:center; z-index:999;">
+  
+  <div style="background:#111; border:1px solid #0f0; padding:20px; border-radius:8px;">
+    <h3>Import Private Key</h3>
+    <input id="importPriv" type="text" placeholder="Paste Private Key" style="width:300px;">
+    <br><br>
+    <button id="confirmImportBtn">Import</button>
+    <button onclick="document.getElementById('importModal').style.display='none'">Cancel</button>
+  </div>
+
+</div>
 
 <script>
 const API = "http://localhost:3005";
@@ -268,6 +285,27 @@ function renderSavedWallets(){
   });
 }
 
+/* ========= IMPORT WALLET ========= */
+async function importWallet(){
+  const key = document.getElementById("importPriv").value.trim();
+
+  if(!key || key.length < 20){
+    log("⚠️ Invalid private key!");
+    return;
+  }
+
+  privKey = key;
+  const addrHash = await hash(privKey);
+  address = addrHash.slice(0, 32);
+
+  localStorage.setItem("KTC_Wallet", JSON.stringify({privKey, address}));
+
+  document.getElementById("importModal").style.display = "none";
+  log("🔑 Wallet imported successfully!");
+
+  updateDisplay();
+}
+
 /* ========= COIN RAIN ========= */
 function createCoin(){
   const coin=document.createElement("div");
@@ -279,13 +317,13 @@ function createCoin(){
   setTimeout(()=>coin.remove(),6000);
 }
 
-/* 🔥 HIDUPKAN HUJAN COIN — Aktif 24/7 */
 setInterval(createCoin,600);
-/* ================================= */
 
 /* Init */
 window.onload=()=>{
   document.getElementById("createWalletBtn").onclick=createWallet;
+  document.getElementById("importWalletBtn").onclick=()=>{ document.getElementById("importModal").style.display="flex"; };
+  document.getElementById("confirmImportBtn").onclick=importWallet;
   document.getElementById("clearWalletBtn").onclick=clearWallet;
   document.getElementById("startMiningBtn").onclick=startMining;
   document.getElementById("stopMiningBtn").onclick=stopMining;
