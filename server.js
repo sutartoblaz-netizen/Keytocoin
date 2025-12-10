@@ -1,4 +1,3 @@
-// server.js — Non-blocking mining + global access
 const express = require("express");
 const bodyParser = require("body-parser");
 const WebSocket = require("ws");
@@ -7,42 +6,51 @@ const fs = require("fs");
 const path = require("path");
 const { Worker } = require("worker_threads");
 
+// ------------------------- Config -------------------------
 const HTTP_PORT = process.env.HTTP_PORT || 3005;
 const P2P_PORT = process.env.P2P_PORT || 6006;
 const peers = process.env.PEERS ? process.env.PEERS.split(",") : [];
 
-let blockchain = [];
-let balances = {};
-let supply = 0;
+const DIFFICULTY = 3; // leading zeros
+const CHAIN_FOLDER = path.resolve(__dirname, "data");
+const CHAIN_FILE = path.join(CHAIN_FOLDER, "blockchain.json");
+
 const MAX_SUPPLY = 17000000;
 const MIN_REWARD = 1;
 const DEFAULT_REWARD = 1;
 
-let DIFFICULTY = 3; // leading zeros
-const CHAIN_FOLDER = path.resolve(__dirname, "data");
-const CHAIN_FILE = path.join(CHAIN_FOLDER, "blockchain.json");
-
-// === HASH FUNCTION ===
+// ------------------------- Blockchain -------------------------
 function sha256(data) {
   return crypto.createHash("sha256").update(data).digest("hex");
 }
 
-// === GENESIS BLOCK ===
+function calculateHash(block) {
+  const clone = { ...block, hash: undefined };
+  return sha256(JSON.stringify(clone));
+}
+
 function createGenesisBlock() {
   const block = { index: 0, timestamp: Date.now(), data: "Genesis Block", prevHash: "0", nonce: 0 };
   block.hash = calculateHash(block);
   return block;
 }
 
-// === HASH CALC ===
-function calculateHash(block) {
-  const clone = { ...block, hash: undefined };
-  return sha256(JSON.stringify(clone));
+// ------------------------- Persistence -------------------------
+if (!fs.existsSync(CHAIN_FOLDER)) fs.mkdirSync(CHAIN_FOLDER, { recursive: true });
+
+let blockchain = [createGenesisBlock()];
+let balances = {};
+let supply = 0;
+
+function saveChainToDisk() {
+  try {
+    fs.writeFileSync(CHAIN_FILE + ".tmp", JSON.stringify(blockchain, null, 2));
+    fs.renameSync(CHAIN_FILE + ".tmp", CHAIN_FILE);
+  } catch(e) {
+    console.log("💾 Save error (ignored):", e.message);
+  }
 }
 
-// === PERSISTENCE ===
-function ensureDataFolder() { if (!fs.existsSync(CHAIN_FOLDER)) fs.mkdirSync(CHAIN_FOLDER, { recursive: true }); }
-function saveChainToDisk() { try { ensureDataFolder(); fs.writeFileSync(CHAIN_FILE, JSON.stringify(blockchain, null, 2)); } catch(e){ console.error("Save error:", e.message); } }
 function loadChainFromDisk() {
   try {
     if (fs.existsSync(CHAIN_FILE)) {
@@ -55,10 +63,10 @@ function loadChainFromDisk() {
         return;
       }
     }
-  } catch(e){ console.error("Load error:", e.message); }
+  } catch(e){ console.log("💾 Load error (ignored):", e.message); }
 }
 
-// === BALANCES ===
+// ------------------------- Balances -------------------------
 function rebuildBalances() {
   balances = {};
   supply = 0;
@@ -76,7 +84,7 @@ function rebuildBalances() {
   }
 }
 
-// === BLOCK VALIDATION ===
+// ------------------------- Block Validation -------------------------
 function isValidBlock(newBlock, prevBlock) {
   if (!newBlock || !prevBlock) return false;
   if (prevBlock.index+1 !== newBlock.index) return false;
@@ -95,26 +103,49 @@ function isValidChain(chain) {
   return true;
 }
 
-// === P2P ===
-let sockets=[];
+// ------------------------- P2P -------------------------
+let sockets = [];
 function initConnection(ws){
   sockets.push(ws);
   console.log("🔗 Peer connected. Total:", sockets.length);
-  ws.on("message", data=>handleMessage(ws,data));
-  ws.on("close", ()=>{ sockets=sockets.filter(s=>s!==ws); console.log("🔌 Peer disconnected. Remaining:", sockets.length); });
-  ws.on("error", err=>{ sockets=sockets.filter(s=>s!==ws); console.log("❌ Peer error:", err.message||err); });
+
+  ws.isAlive = true;
+  ws.on("pong", () => ws.isAlive = true);
+
+  ws.on("message", data => handleMessage(ws,data));
+
+  ws.on("close", () => {
+    sockets = sockets.filter(s => s!==ws);
+    console.log("🔌 Peer disconnected — server tetap hidup");
+  });
+
+  ws.on("error", err => {
+    sockets = sockets.filter(s => s!==ws);
+    console.log("❌ Peer error (ignored):", err.message||err);
+  });
+
   ws.send(JSON.stringify({type:"BLOCKCHAIN",data:blockchain}));
 }
 
 function connectToPeer(peer){
   try {
-    const ws=new WebSocket(peer);
-    ws.on("open",()=>initConnection(ws));
-    ws.on("error",err=>console.log("❌ Connect failed:",peer,err.message||err));
-  } catch(e){ console.log("❌ connectToPeer exception:", e.message||e); }
+    const ws = new WebSocket(peer);
+
+    ws.on("open", () => {
+      console.log("🌍 Peer connected:", peer);
+      initConnection(ws);
+    });
+
+    ws.on("error", err => console.log("🌍 Peer not reachable (ignored):", peer));
+
+    ws.on("close", () => console.log("🌍 Peer closed:", peer));
+  } catch(e){ console.log("🌍 connectToPeer error (ignored):", e.message); }
 }
 
-function broadcast(msg){ const j=JSON.stringify(msg); sockets.forEach(ws=>{ if(ws.readyState===WebSocket.OPEN) ws.send(j); }); }
+function broadcast(msg){
+  const j = JSON.stringify(msg);
+  sockets.forEach(ws=>{ if(ws.readyState===WebSocket.OPEN) ws.send(j); });
+}
 
 function handleMessage(ws,data){
   let msg;
@@ -122,7 +153,9 @@ function handleMessage(ws,data){
   if(msg.type==="BLOCKCHAIN" && Array.isArray(msg.data)){
     const incoming=msg.data;
     if(incoming.length>blockchain.length && isValidChain(incoming)){
-      blockchain=incoming; rebuildBalances(); saveChainToDisk();
+      blockchain=incoming;
+      rebuildBalances();
+      saveChainToDisk();
       console.log("📥 Replaced chain from peer.");
     } else if(incoming.length>blockchain.length){
       console.log("❌ Longer chain invalid, rejected.");
@@ -130,14 +163,14 @@ function handleMessage(ws,data){
     return;
   }
   if(msg.type==="NEW_BLOCK" && msg.data){
-    const newBlock=msg.data;
-    const prevBlock=blockchain[blockchain.length-1];
-    if(isValidBlock(newBlock,prevBlock)){
+    const newBlock = msg.data;
+    const prevBlock = blockchain[blockchain.length-1];
+    if(isValidBlock(newBlock, prevBlock)){
       blockchain.push(newBlock);
-      const d=newBlock.data;
+      const d = newBlock.data;
       if(d){
-        if(d.reward&&d.to){ balances[d.to]=(balances[d.to]||0)+Number(d.reward); supply+=Number(d.reward); }
-        else if(d.amount&&d.from&&d.to){ balances[d.from]=(balances[d.from]||0)-Number(d.amount); balances[d.to]=(balances[d.to]||0)+Number(d.amount); }
+        if(d.reward && d.to){ balances[d.to]=(balances[d.to]||0)+Number(d.reward); supply+=Number(d.reward); }
+        else if(d.amount && d.from && d.to){ balances[d.from]-=Number(d.amount); balances[d.to]=(balances[d.to]||0)+Number(d.amount); }
       }
       saveChainToDisk();
       console.log("📥 Block added from peer:", newBlock.index);
@@ -147,20 +180,26 @@ function handleMessage(ws,data){
   console.log("ℹ️ Unknown message type:", msg.type);
 }
 
-// === BOOTSTRAP ===
-blockchain.push(createGenesisBlock());
+// ------------------------- Bootstrap -------------------------
 loadChainFromDisk();
 rebuildBalances();
 
-// === EXPRESS SERVER ===
-const app=express();
+// ------------------------- Express HTTP -------------------------
+const app = express();
 app.use(bodyParser.json());
-app.use((req,res,next)=>{ res.setHeader("Access-Control-Allow-Origin","*"); res.setHeader("Access-Control-Allow-Methods","GET,POST,OPTIONS"); res.setHeader("Access-Control-Allow-Headers","Content-Type"); next(); });
+app.use((req,res,next)=>{
+  res.setHeader("Access-Control-Allow-Origin","*");
+  res.setHeader("Access-Control-Allow-Methods","GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers","Content-Type");
+  next();
+});
 
-// === MINING (Worker) ===
-function mineBlockAsync(address, rewardValue=DEFAULT_REWARD){
+// ------------------------- Mining Worker -------------------------
+function mineBlockAsync(address,rewardValue=DEFAULT_REWARD){
   return new Promise((resolve,reject)=>{
-    const worker=new Worker(`
+    const prevBlock = blockchain[blockchain.length-1];
+
+    const workerCode = `
       const { parentPort } = require('worker_threads');
       const crypto = require('crypto');
       function sha256(d){return crypto.createHash("sha256").update(d).digest("hex");}
@@ -172,20 +211,25 @@ function mineBlockAsync(address, rewardValue=DEFAULT_REWARD){
           const hash=sha256(JSON.stringify({...candidate,hash:undefined}));
           if(hash.startsWith('0'.repeat(difficulty))){ candidate.hash=hash; block=candidate; break; }
           nonce++;
-          if(nonce%200000===0) require('deasync').sleep(0);
         }
         parentPort.postMessage(block);
       });
-    `,{ eval:true });
-    const prevBlock=blockchain[blockchain.length-1];
+    `;
+
+    const worker = new Worker(workerCode,{eval:true});
     worker.once('message', block=>{
       blockchain.push(block);
-      balances[address]=(balances[address]||0)+rewardValue;
+      balances[address] = (balances[address]||0)+rewardValue;
       supply+=rewardValue;
       saveChainToDisk();
       broadcast({type:"NEW_BLOCK",data:block});
       resolve(block);
     });
+
+    worker.on('error', err=>{
+      console.log("🔥 Worker mining error (ignored):", err.message);
+    });
+
     worker.postMessage({ index:blockchain.length, prevHash:prevBlock.hash, reward:rewardValue, to:address, difficulty:DIFFICULTY });
   });
 }
@@ -198,8 +242,8 @@ app.post("/mine", async (req,res)=>{
   if(!Number.isFinite(rewardValue)||rewardValue<MIN_REWARD) return res.status(400).json({error:"Invalid reward"});
   if(supply+rewardValue>MAX_SUPPLY) return res.status(400).json({error:"Max supply reached"});
   try{
-    const block=await mineBlockAsync(address,rewardValue);
-    res.json({message:"⛏️ KTC mined ⛓️",block,balance:balances[address],supply});
+    const block = await mineBlockAsync(address,rewardValue);
+    res.json({message:"⛏️ KTC mined ⛓️", block, balance:balances[address], supply});
   } catch(e){ res.status(500).json({error:e.message}); }
 });
 
@@ -211,7 +255,8 @@ app.get("/wallet/:address",(req,res)=>{
   res.json({ balance:balances[address]||0, blocks:blockchain.filter(b=>b.data&&b.data.to===address).length, supply });
 });
 app.post("/send",(req,res)=>{
-  const { from,to,amount }=req.body; const amt=Number(amount);
+  const { from,to,amount } = req.body;
+  const amt=Number(amount);
   if(!from||!to||!Number.isFinite(amt)||amt<=0) return res.status(400).json({error:"Invalid"});
   if(!balances[from]||balances[from]<amt) return res.status(400).json({error:"Insufficient"});
   balances[from]-=amt; balances[to]=(balances[to]||0)+amt;
@@ -221,18 +266,26 @@ app.post("/send",(req,res)=>{
   blockchain.push(block); saveChainToDisk(); broadcast({type:"NEW_BLOCK",data:block});
   res.json({message:"Transaction confirmed",block});
 });
+
 app.get("/blocks",(req,res)=>res.json(blockchain));
 app.get("/status",(req,res)=>res.json({blocks:blockchain.length,peers:sockets.length,supply,maxSupply:MAX_SUPPLY,difficulty:DIFFICULTY}));
 
-// Start HTTP server (global)
+// ------------------------- Start HTTP Server -------------------------
 app.listen(HTTP_PORT,'0.0.0.0',()=>console.log(`✅ HTTP Server running at http://0.0.0.0:${HTTP_PORT}`));
 
-// P2P WebSocket
-const wss=new WebSocket.Server({port:P2P_PORT});
-wss.on("connection",ws=>initConnection(ws));
-console.log("🌏📡 P2P WebSocket running on port:",P2P_PORT);
+// ------------------------- P2P WebSocket -------------------------
+const wss = new WebSocket.Server({port:P2P_PORT});
+wss.on("connection", ws => initConnection(ws));
+console.log("🌏📡 P2P WebSocket running on port:", P2P_PORT);
 peers.forEach(p=>connectToPeer(p.startsWith("ws://")||p.startsWith("wss://")?p:`ws://${p}`));
 
-// Save on exit
-process.on("SIGINT",()=>{ console.log("✋ Shutting down..."); saveChainToDisk(); process.exit(); });
-process.on("SIGTERM",()=>{ console.log("✋ Shutting down..."); saveChainToDisk(); process.exit(); });
+// ------------------------- Save on Exit -------------------------
+process.on("SIGINT", ()=>{ console.log("✋ Shutting down..."); saveChainToDisk(); });
+process.on("SIGTERM", ()=>{ console.log("✋ Shutting down..."); saveChainToDisk(); });
+
+// ------------------------- ANTI-MATI FIREWALL -------------------------
+process.on("uncaughtException", (err) => console.log("🔥 [FIREWALL] uncaughtException:", err.message));
+process.on("unhandledRejection", (reason, promise) => console.log("🔥 [FIREWALL] unhandledRejection:", reason));
+process.on("error", (err) => console.log("🔥 [FIREWALL] General error:", err.message));
+
+console.log("💠 KeytoCoin Anti-Mati Firewall: AK
