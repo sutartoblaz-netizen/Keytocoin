@@ -1,0 +1,179 @@
+# KeytoCoin Whitepaper
+
+> Dokumen ini menyatukan README teknis dan whitepaper ringkas untuk dua berkas kode yang Anda kirim: front-end HTML/JS (KeytoCoin Wallet UI) dan back-end Node.js (KeytoCoin node + P2P + mining worker). Dokumen ditulis dalam Bahasa Indonesia.
+
+---
+
+## Ringkasan Proyek
+
+**Nama proyek:** KeytoCoin (KTC)
+
+**Tujuan:** Prototipe blockchain sederhana dengan fitur wallet klien (HTML/JS), endpoint HTTP, node P2P (WebSocket), mekanisme mining berbasis proof-of-work sederhana, dan transfer on-chain antar alamat. Proyek ini ditujukan untuk edukasi dan pengujian konseptual, bukan sebagai mata uang riil untuk produksi.
+
+**Komponen:**
+
+* `client.html` — antarmuka wallet (create/import wallet, mining trigger, swap KTC→IDR simulasi, withdraw simulasi, send tx, localStorage untuk menyimpan data). HTML/JS standalone yang berkomunikasi ke backend di `http://localhost:3005`.
+* `server.js` (Node.js) — node blockchain: HTTP API (create-wallet, mine, send, wallet info, blocks, status), P2P WebSocket untuk broadcasting chain dan blok baru, worker-thread untuk mining, persistence ke file `data/blockchain.json`.
+
+---
+
+## Fitur Utama
+
+### Front-end (Wallet UI)
+
+* Buat wallet acak (privKey—32 bytes hex → address = SHA-256(privKey).slice(0,32)).
+* Import private key.
+* Tampilkan balance, jumlah blok yang ditambang untuk alamat, total supply.
+* Tombol start/stop mining (memanggil endpoint `/mine` secara berkala).
+* Kirim transaksi on-chain via `/send` (membuat blok berisi `data:{from,to,amount}` secara langsung di server).
+* Swap KTC→IDR (lokal, kurs hard-coded 1 KTC = Rp10.000) dan withdraw ke "bank" (lokal, disimpan di localStorage).
+* Simpan daftar alamat (localStorage).
+* Efek visual (coin rain, teks brick) untuk UX.
+
+### Back-end (Node.js)
+
+* Struktur blok sederhana `{ index, timestamp, data, prevHash, nonce, hash }`.
+* Proof-of-work: pencarian hash yang memiliki `DIFFICULTY` leading zeros (`DIFFICULTY = 3` default).
+* Mining dilakukan pada worker threads (`worker_threads`) untuk menghindari blocking event loop.
+* Penanganan P2P via WebSocket: bertukar blockchain dan blok baru.
+* Persisten ke disk `data/blockchain.json` (atomic write via `.tmp` -> rename).
+* Endpoint HTTP: `/mine`, `/create-wallet`, `/balance`, `/wallet/:address`, `/send`, `/blocks`, `/status`.
+* Proteksi sederhana: cek `MAX_SUPPLY` sebelum menambang, cek saldo sebelum mengirim transaksi.
+
+---
+
+## Instalasi & Jalankan (Server)
+
+1. Pastikan Node.js (v14+) terpasang.
+2. Buat folder proyek dan simpan `server.js`.
+3. Inisialisasi dan pasang dependency:
+
+```bash
+npm init -y
+npm install express body-parser ws
+```
+
+> catatan: `worker_threads` adalah modul builtin pada Node.js modern.
+
+4. Jalankan server:
+
+```bash
+node server.js
+```
+
+Default: HTTP di `http://0.0.0.0:3005` dan P2P WebSocket di `6006`. Gunakan environment variables `HTTP_PORT`, `P2P_PORT`, `PEERS` untuk menyesuaikan.
+
+---
+
+## Instalasi & Jalankan (Client)
+
+1. Simpan file HTML (`client.html`) di mesin yang sama atau buka langsung di browser.
+2. Pastikan server berjalan pada `http://localhost:3005` atau sesuaikan konstanta `API` pada baris atas script.
+3. Buka HTML di browser. Gunakan fitur create/import wallet, lalu start mining atau kirim transaksi.
+
+---
+
+## API Endpoints (Ringkas)
+
+* `GET /create-wallet` → `{ address }` — generator alamat acak (server-side).
+* `GET /balance` → `{ supply, knownAddresses }` — ringkasan supply.
+* `GET /wallet/:address` → `{ balance, blocks, supply }` — info wallet.
+* `POST /mine` — body `{ address, reward? }` → memicu mining async via worker, menambahkan block reward.
+* `POST /send` — body `{ from, to, amount }` → membuat block transaksi tanpa POW (langsung dimasukkan oleh node).
+* `GET /blocks` → seluruh chain JSON.
+* `GET /status` → status node (jumlah blok, peers, supply, difficulty).
+
+---
+
+## Arsitektur & Alur Data Singkat
+
+1. Client menghasilkan `privKey` dan `address` (address = hash(privKey)).
+2. Client memanggil `/mine` untuk menambang block reward ke address yang diberikan.
+3. Server memulai worker-thread yang melakukan loop hashing hingga hash dengan `DIFFICULTY` ditemukan.
+4. Block valid disimpan di `blockchain`, `balances` di-update, `supply` bertambah, block dibroadcast ke peers.
+5. Untuk transaksi, API `/send` membuat block transaksi (tanpa POW) dan menambahkannya
+
+Rekomendasi: jika hendak mengembangkan jadi sesuatu yang lebih serius, tambahkan: signature ECDSA/Ed25519 untuk transaksi; validasi signature di server; memisahkan wallet/private keys dari server; consensus layer lebih kuat; limitasi rate dan autentikasi untuk API.
+
+---
+
+## Struktur File yang Disarankan
+
+```
+keytocoin/
+├─ client.html
+├─ server.js
+├─ package.json
+└─ data/
+   └─ blockchain.json
+```
+
+---
+
+## Whitepaper keytocoin
+
+### Visi
+
+KeytoCoin (KTC) bertujuan menjadi demonstrator konsep blockchain sederhana: bagaimana blok dibentuk, saldo ditangani, dan bagaimana node berkomunikasi menggunakan WebSocket. Fokus adalah pendidikan, debugging, dan eksperimen.
+
+### Konsensus
+
+Proof-of-work dasar: menemukan nonce sehingga `sha256(JSON.stringify(blockWithoutHash))` memiliki `DIFFICULTY` leading zeros. Tidak ada reward halving, difficulty retargeting, ataupun gas/fee.
+
+### Tokenomics (eksperimental)
+
+* Total maksimal pasokan: `MAX_SUPPLY` (default 17.000.000 KTC).
+* Reward tiap blok: `DEFAULT_REWARD` (default 1 KTC). Nilai minimal `MIN_REWARD`.
+* Transfer peer-to-peer terjadi melalui pembuatan blok berisi objek `{ from, to, amount }`.
+
+### Keamanan & Privasi Petunjuk Pengembangan Lanjutan (Checklist)
+
+1. **Tambah signature transaksi**: gunakan `elliptic`/`secp256k1` atau `tweetnacl` untuk menandatangani transaksi, lalu verifikasi server.
+2. **Validasi block/tx**: pastikan node memvalidasi signature, mengecek double-spend, dan menerapkan pool transaksi.
+3. **Difficulty re-targeting**: sesuaikan `DIFFICULTY` berdasarkan waktu blok.
+4. **Rate limiting & auth**: tambahkan API key / rate limit agar server tidak disalahgunakan.
+5. **Test suite**: buat unit test untuk hash, validasi block, P2P messaging.
+6. **Peer discovery**: ganti static peers dengan discovery (mDNS, bootstrap nodes).
+
+---
+
+## Lisensi
+
+Dokumen ini dan artefak yang dihasilkan (README/whitepaper) diberikan sebagai teks bantuan. Kode yang Anda miliki tetap menjadi hasil karya Anda atau sumber aslinya.
+
+Jika ingin lisensi untuk projek: rekomendasi permissive open-source seperti MIT. Contoh singkat `LICENSE (MIT)` bisa ditambahkan.
+
+---
+
+## Keaslian (Pernyataan)
+
+* Dokumen ini **dibuat oleh satoshi nakamoto berdasarkan kode yang Anda kirimkan pada percakapan ini. Saya tidak mengklaim kepemilikan kode sumber Anda.**
+* Jika Anda memerlukan pernyataan keaslian formal (mis. tanda tangan digital, penandaan waktu, atau hash berkas sumber), saya dapat membantu membuat file `SHA256` dari berkas-berkas dan format pernyataan yang dapat Anda tanda tangani. Contoh: `SHA256(server.js) = <hex>` — jika Anda ingin saya hitung hash, unggah berkas atau sediakan konten lengkapnya.
+
+---
+
+## Contoh README singkat (untuk repositori)
+
+```
+# KeytoCoin (KTC)
+
+Prototipe blockchain educational — wallet (client) + node (server).
+
+## Run
+1. `npm install`
+2. `node server.js`
+3. Buka `client.html` di browser dan hubungkan ke `http://localhost:3005`.
+
+## Disclaimer
+For educational use only. Not meant for production or financial use.
+```
+
+---
+
+Jika kamu mau, aku bisa:
+
+* Mengonversi dokumen ini menjadi file README.md yang bisa didownload.
+* Menambahkan contoh command `curl` untuk setiap endpoint.
+* Membuat bagian FAQ atau troubleshooting (mis. potongan kode `app.post('/send')` yang terpotong) dan patch full server & client.
+
+Tolong bilang mana yang mau kamu lakukan selanjutnya — aku akan langsung buatkan file atau patch-nya.
