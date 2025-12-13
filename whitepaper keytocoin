@@ -1,0 +1,66 @@
+KeytoCoin (KTC)
+Bitcoin-Anchored Layer-2 Digital Diamond
+Abstract
+KeytoCoin (KTC) is a Bitcoin-anchored Layer-2 execution blockchain that uses Bitcoin as its ultimate layer of trust. With a maximum supply capped at 17 million units, KeytoCoin is designed as a digital diamond: a scarce, durable, and cryptographically verifiable asset secured through Bitcoin. The system preserves decentralization, an independent proof-of-work consensus, and its own peer-to-peer network, while aligning with the modern Bitcoin Layer-2 ecosystem.
+1. Background
+Bitcoin is the most secure and decentralized network in the world, yet it is not designed to host complex application logic directly. For this reason, Layer-2 solutions have emerged to extend Bitcoin’s functionality without compromising its security.
+KeytoCoin operates as an independent execution layer Layer-2, using a state anchoring approach to Bitcoin. This design aligns with Bitcoin’s core philosophy: minimalism, verifiability, and long-term resilience.
+2. Objectives of KeytoCoin
+To serve as a scarce digital asset with a limited supply (17 million units)
+To provide an alternative long-term store of value
+To utilize Bitcoin as the settlement and finality layer
+To represent a “digital diamond” within the crypto ecosystem
+3. System Architecture
+3.1 Layer 1: Bitcoin
+Bitcoin functions as:
+The finality layer
+A storage medium for KeytoCoin state commitments
+A global source of cryptographic trust
+KeytoCoin does not modify Bitcoin. Instead, it leverages Bitcoin transactions (such as OP_RETURN) to record cryptographic hashes of the KeytoCoin network state.
+3.2 Layer 2: KeytoCoin Execution Layer
+KeytoCoin maintains:
+An independent blockchain
+Proof-of-Work consensus
+Peer-to-peer nodes
+Wallets and an internal balance system
+Each block reflects a state transition within the KeytoCoin network.
+4. State Commitment Mechanism
+At defined intervals, the KeytoCoin network summarizes its current state into a cryptographic state commitment hash that includes:
+Block height
+Total circulating supply
+Balance distribution
+This hash is then recorded on the Bitcoin network. As a result, every KeytoCoin state transition can be independently verified against Bitcoin.
+5. Bitcoin Anchor Block
+KeytoCoin introduces a special block type:
+BTC_ANCHOR Block
+Contains the KeytoCoin state hash
+References a Bitcoin transaction ID (TXID)
+Does not modify supply or balances
+This block acts as a cryptographic bridge between KeytoCoin and Bitcoin.
+6. Bitcoin Lock Model (Proof-of-Lock)
+KeytoCoin supports recording proofs of Bitcoin locking:
+Users lock BTC on the Bitcoin network
+The corresponding TXID is recorded on KeytoCoin
+The KeytoCoin network never takes custody of BTC
+This model aligns with the RGB protocol and client-side validation approach.
+7. Token Economics
+Name: KeytoCoin (KTC)
+Maximum Supply: 17,000,000 KTC
+Inflation: Zero after the maximum supply is reached
+Distribution: Proof-of-Work mining
+There is no premine, no manual minting, and no unilateral modification of the supply.
+8. Security & Decentralization
+Independent Proof-of-Work consensus
+Layered hash verification (KeytoCoin + Bitcoin)
+A permissionless peer-to-peer network
+Bitcoin serves as a trust amplifier, not as a controller of the KeytoCoin network.
+9. Position Within the Bitcoin Layer-2 Ecosystem
+Conceptually, KeytoCoin aligns with:
+Bitcoin Rollups (state commitment model)
+RGB Protocol (client-side validation)
+Anchored sidechain architectures
+However, KeytoCoin focuses on value storage rather than complex smart contract execution.
+10. Long-Term Vision
+KeytoCoin does not aim to replace Bitcoin, but to complement it. With a strictly limited supply and Bitcoin anchoring, KeytoCoin is designed to serve as a long-term store of value that remains verifiable across generations.
+Conclusion
+KeytoCoin is a serious experiment in building a scarce digital asset rooted in Bitcoin’s security. Through a simple yet robust Layer-2 architecture, KeytoCoin positions itself as a digital diamond in the decentralized economic era.
