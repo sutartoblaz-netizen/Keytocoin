@@ -1,4 +1,4 @@
-// ================================ // KeytoCoin Bitcoin Layer-2 (REAL) // Custodial / Federated L2 anchored to Bitcoin Mainnet // REQUIREMENT: Bitcoin Core FULL NODE (txindex=1) // ================================
+// ================================ // KeytoCoin Layer-2 (REAL) // Custodial / Federated L2 anchored to Bitcoin Mainnet // REQUIREMENT: Bitcoin Core FULL NODE (txindex=1) // ================================
 
 const express = require("express"); const bodyParser = require("body-parser"); const WebSocket = require("ws"); const crypto = require("crypto"); const fs = require("fs"); const path = require("path"); const fetch = require("node-fetch");
 
