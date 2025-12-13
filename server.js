@@ -184,19 +184,55 @@ function mineAsync(address, reward) {
 }
 
 /* ================= ROUTES ================= */
-app.post("/mine", async (req, res) => {
-  const { address } = req.body;
-  if (!address) return res.status(400).json({ error: "address required" });
-  if (issuedSupply + DEFAULT_REWARD > MAX_SUPPLY)
-    return res.status(400).json({ error: "max supply reached" });
 
-  const block = await mineAsync(address, DEFAULT_REWARD);
+// 🔹 WALLET INFO (dipakai HTML)
+app.get("/wallet/:address", (req, res) => {
+  const address = req.params.address;
+  res.json({
+    balance: balances[address] || 0,
+    blocks: executionLayer.filter(
+      b => b.data?.type === "MINING_REWARD" && b.data.to === address
+    ).length,
+    supply: issuedSupply
+  });
+});
+
+// 🔹 SEND TRANSACTION
+app.post("/send", (req, res) => {
+  const { from, to, amount } = req.body;
+
+  if (!from || !to || !amount)
+    return res.status(400).json({ error: "invalid tx" });
+
+  if ((balances[from] || 0) < amount)
+    return res.status(400).json({ error: "insufficient balance" });
+
+  const prev = executionLayer.at(-1);
+  const block = {
+    index: executionLayer.length,
+    timestamp: Date.now(),
+    data: { type: "TRANSFER", from, to, amount },
+    prevHash: prev.hash,
+    nonce: 0
+  };
+
+  block.hash = calculateHash(block);
   executionLayer.push(block);
   rebuildState();
   saveChain();
   broadcast({ type: "NEW_BLOCK", data: block });
 
-  res.json({ block, balance: balances[address], issuedSupply });
+  res.json({ message: "Transaction confirmed" });
+});
+
+// 🔹 BALANCE (opsional)
+app.get("/balance", (req, res) => {
+  res.json(balances);
+});
+
+// 🔹 DUMMY CREATE WALLET (biar frontend tidak error)
+app.get("/create-wallet", (req, res) => {
+  res.json({ ok: true });
 });
 
 /* ===== BITCOIN LOCK (RGB STYLE) ===== */
