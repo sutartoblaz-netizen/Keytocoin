@@ -20,15 +20,6 @@ input{ width:250px; }
 }
 @keyframes fall{ to{ transform:translateY(110vh) rotate(360deg); opacity:0.8; } }
 
-/* Trigonometric Coin */
-.trigCoin{
-  position:fixed;top:0;width:40px;height:40px;border-radius:50%;
-  background:radial-gradient(circle at 30% 30%,#0ff,#08f);
-  display:flex;align-items:center;justify-content:center;
-  color:#111;font-weight:bold;font-size:12px;
-  box-shadow:0 0 10px #0ff,inset 0 0 5px #08f;
-}
-
 /* Brick Text */
 .brick-text{
   font-size:30px;font-weight:bold;display:inline-block;
@@ -58,29 +49,16 @@ input{ width:250px; }
 <p>Address: <span id="address"></span></p>
 <p>Private: <span id="privkey"></span></p>
 <p>Balance: <span id="balance">0</span> KTC</p>
-<p>Bank Balance: Rp<span id="idrBalance">0</span></p>
 
 <hr>
 <h3>Mining</h3>
 <p>Mined Blocks: <span id="blocks">0</span></p>
-<p>Total Supply: <span id="supply">0</span> / 17,000,000 KTC</span>
+<p>Total Supply: <span id="supply">0</span> / 17,000,000 KTC</p>
 
 <h3>Send Transaction</h3>
 <input id="to" placeholder="Recipient Address">
 <input id="amount" type="number" placeholder="Amount">
 <button id="sendBtn">Send</button>
-
-<hr>
-<h3>Swap KTC → IDR</h3>
-<input id="swapAmount" type="number" placeholder="Amount of KTC">
-<button id="swapBtn">Swap</button>
-<p id="swapResult"></p>
-
-<h3>Withdraw to Bank</h3>
-<input id="bankAcc" type="text" placeholder="Bank Account Number">
-<input id="withdrawAmount" type="number" placeholder="Amount in Rupiah">
-<button id="withdrawBtn">Withdraw</button>
-<p id="withdrawResult"></p>
 
 <hr>
 <h3>Saved Wallets</h3>
@@ -106,22 +84,13 @@ input{ width:250px; }
     <button id="confirmImportBtn">Import</button>
     <button onclick="document.getElementById('importModal').style.display='none'">Cancel</button>
   </div>
-
 </div>
 
 <script>
 const API = "http://localhost:3005";
 
-fetch(`${API}/balance`).then(r=>r.json()).then(d=>console.log(d));
-fetch(`${API}/create-wallet`).then(r=>r.json()).then(d=>console.log(d));
-
 let privKey=null, address=null, miningInterval=null;
-let idrBalance = 0;
 let showPriv = false;
-
-localStorage.removeItem("KTC_Wallet");
-localStorage.removeItem("KTC_IDR");
-localStorage.removeItem("KTC_Saved");
 
 function log(msg){
   const logEl=document.getElementById("log");
@@ -140,7 +109,6 @@ async function createWallet(){
   privKey=Array.from(arr).map(b=>b.toString(16).padStart(2,"0")).join("");
   const addrHash=await hash(privKey); address=addrHash.slice(0,32);
   localStorage.setItem("KTC_Wallet",JSON.stringify({privKey,address}));
-  idrBalance=0; localStorage.setItem("KTC_IDR",idrBalance);
   log("✅ Wallet created!"); updateDisplay();
 }
 
@@ -151,7 +119,6 @@ function clearWallet(){
   log("🗑️ Wallet cleared.");
   localStorage.removeItem("KTC_Saved");
   renderSavedWallets();
-  idrBalance=0; localStorage.setItem("KTC_IDR",0);
 }
 
 async function getWalletInfo(){
@@ -170,7 +137,6 @@ async function updateDisplay(){
   document.getElementById("balance").innerText = info.balance;
   document.getElementById("blocks").innerText = info.blocks;
   document.getElementById("supply").innerText = info.supply;
-  document.getElementById("idrBalance").innerText = idrBalance.toLocaleString("id-ID");
 }
 
 async function mineBlock(){
@@ -207,60 +173,17 @@ async function sendTransaction(){
   let amount=parseInt(document.getElementById("amount").value);
   if(!to || !amount || amount<=0){ log("⚠️ Invalid input"); return; }
 
-  const tx={from:address,to,amount,timestamp:Date.now()};
-  const sig=await hash(JSON.stringify(tx)); tx.signature=sig.slice(0,16);
-
   try{
     const res=await fetch(`${API}/send`,{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(tx)
+      body:JSON.stringify({from:address,to,amount})
     });
     const data=await res.json();
     if(data.error) log("⚠️ "+data.error);
     else log("➕ "+data.message);
     updateDisplay();
   }catch(e){ log("⚠️ Server error"); }
-}
-
-async function swapKTC(){
-  if(!address){ log("⚠️ Create wallet first!"); return; }
-  let amount=parseInt(document.getElementById("swapAmount").value);
-  if(!amount || amount<=0){ log("⚠️ Invalid input."); return; }
-
-  const info = await getWalletInfo();
-  if(info.balance < amount){
-    log("⚠️ Not enough KTC balance!");
-    return;
-  }
-
-  let swapped = amount * 10000;
-  idrBalance += swapped;
-  localStorage.setItem("KTC_IDR", idrBalance);
-
-  document.getElementById("idrBalance").innerText = idrBalance.toLocaleString("id-ID");
-  document.getElementById("swapResult").innerText =
-    `✅ Swap ${amount} KTC → Rp${swapped.toLocaleString("id-ID")}`;
-
-  log(`🔄 Swap ${amount} KTC → Rp${swapped.toLocaleString("id-ID")}`);
-  updateDisplay();
-}
-
-function withdrawIDR(){
-  let bankAcc = document.getElementById("bankAcc").value.trim();
-  let amount = parseInt(document.getElementById("withdrawAmount").value);
-
-  if(!bankAcc || !amount || amount<=0){ log("⚠️ Invalid input!"); return; }
-  if(amount>idrBalance){ log("⚠️ Insufficient bank balance!"); return; }
-
-  idrBalance -= amount;
-  localStorage.setItem("KTC_IDR", idrBalance);
-
-  document.getElementById("idrBalance").innerText = idrBalance.toLocaleString("id-ID");
-  document.getElementById("withdrawResult").innerText =
-    `🏦 Withdraw Rp${amount.toLocaleString("id-ID")} to Bank ${bankAcc} successful.`;
-
-  log(`🏦 Withdraw Rp${amount.toLocaleString("id-ID")} to Bank ${bankAcc}`);
 }
 
 function saveWalletAddress(){
@@ -271,7 +194,7 @@ function saveWalletAddress(){
     localStorage.setItem("KTC_Saved", JSON.stringify(saved));
     log("💾 Address saved: "+address);
     renderSavedWallets();
-  } else log("⚠️ Address already saved.");
+  }
 }
 
 function renderSavedWallets(){
@@ -285,28 +208,20 @@ function renderSavedWallets(){
   });
 }
 
-/* ========= IMPORT WALLET ========= */
+/* IMPORT WALLET */
 async function importWallet(){
   const key = document.getElementById("importPriv").value.trim();
-
-  if(!key || key.length < 20){
-    log("⚠️ Invalid private key!");
-    return;
-  }
-
+  if(!key || key.length < 20){ log("⚠️ Invalid private key!"); return; }
   privKey = key;
   const addrHash = await hash(privKey);
   address = addrHash.slice(0, 32);
-
   localStorage.setItem("KTC_Wallet", JSON.stringify({privKey, address}));
-
   document.getElementById("importModal").style.display = "none";
   log("🔑 Wallet imported successfully!");
-
   updateDisplay();
 }
 
-/* ========= COIN RAIN ========= */
+/* COIN RAIN */
 function createCoin(){
   const coin=document.createElement("div");
   coin.className="coin";
@@ -316,7 +231,6 @@ function createCoin(){
   document.body.appendChild(coin);
   setTimeout(()=>coin.remove(),6000);
 }
-
 setInterval(createCoin,600);
 
 /* Init */
@@ -328,14 +242,11 @@ window.onload=()=>{
   document.getElementById("startMiningBtn").onclick=startMining;
   document.getElementById("stopMiningBtn").onclick=stopMining;
   document.getElementById("sendBtn").onclick=sendTransaction;
-  document.getElementById("swapBtn").onclick=swapKTC;
-  document.getElementById("withdrawBtn").onclick=withdrawIDR;
   document.getElementById("saveAddressBtn").onclick=saveWalletAddress;
   document.getElementById("togglePrivBtn").onclick=()=>{ showPriv=!showPriv; updateDisplay(); };
   renderSavedWallets();
   updateDisplay();
 };
 </script>
-
 </body>
 </html>
