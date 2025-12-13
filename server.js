@@ -9,13 +9,10 @@ const { Worker } = require("worker_threads");
 /* ================= CONFIG ================= */
 const HTTP_PORT = process.env.HTTP_PORT || 3005;
 const P2P_PORT = process.env.P2P_PORT || 6006;
-const peers = process.env.PEERS ? process.env.PEERS.split(",") : [];
 
 const DIFFICULTY = 3;
 const MAX_SUPPLY = 17_000_000;
 const DEFAULT_REWARD = 1;
-const MIN_REWARD = 1;
-const ANCHOR_INTERVAL = 100;
 
 const DATA_DIR = path.join(__dirname, "data");
 const CHAIN_FILE = path.join(DATA_DIR, "blockchain.json");
@@ -54,10 +51,10 @@ let btcLocks = [];
 
 /* ================= LOAD / SAVE ================= */
 function saveChain() {
-  fs.writeFileSync(CHAIN_FILE, JSON.stringify({
-    executionLayer,
-    btcLocks
-  }, null, 2));
+  fs.writeFileSync(
+    CHAIN_FILE,
+    JSON.stringify({ executionLayer, btcLocks }, null, 2)
+  );
 }
 
 function loadChain() {
@@ -75,7 +72,6 @@ function rebuildState() {
 
   for (const block of executionLayer) {
     if (!block.data) continue;
-
     const d = block.data;
 
     if (d.type === "MINING_REWARD") {
@@ -84,18 +80,20 @@ function rebuildState() {
     }
 
     if (d.type === "TRANSFER") {
-      balances[d.from] -= d.amount;
+      balances[d.from] = (balances[d.from] || 0) - d.amount;
       balances[d.to] = (balances[d.to] || 0) + d.amount;
     }
   }
 }
 
 function getStateCommitment() {
-  return sha256(JSON.stringify({
-    height: executionLayer.length,
-    issuedSupply,
-    balances
-  }));
+  return sha256(
+    JSON.stringify({
+      height: executionLayer.length,
+      issuedSupply,
+      balances
+    })
+  );
 }
 
 /* ================= VALIDATION ================= */
@@ -118,7 +116,7 @@ function broadcast(msg) {
 function initConnection(ws) {
   sockets.push(ws);
   ws.on("message", msg => handleMessage(ws, msg));
-  ws.on("close", () => sockets = sockets.filter(s => s !== ws));
+  ws.on("close", () => (sockets = sockets.filter(s => s !== ws)));
   ws.send(JSON.stringify({ type: "SYNC", data: executionLayer }));
 }
 
@@ -138,12 +136,20 @@ function handleMessage(ws, msg) {
 const app = express();
 app.use(bodyParser.json());
 
+// ✅ CORS (WAJIB agar HTML bisa fetch)
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  next();
+});
+
 /* ================= MINING ================= */
 function mineAsync(address, reward) {
   return new Promise(resolve => {
     const prev = executionLayer.at(-1);
 
-    const worker = new Worker(`
+    const worker = new Worker(
+      `
       const { parentPort } = require("worker_threads");
       const crypto = require("crypto");
       const sha256 = d => crypto.createHash("sha256").update(d).digest("hex");
@@ -158,7 +164,7 @@ function mineAsync(address, reward) {
             prevHash: msg.prevHash,
             nonce
           };
-          const hash = sha256(JSON.stringify({...block}));
+          const hash = sha256(JSON.stringify(block));
           if (hash.startsWith("0".repeat(msg.difficulty))) {
             block.hash = hash;
             parentPort.postMessage(block);
@@ -167,7 +173,9 @@ function mineAsync(address, reward) {
           nonce++;
         }
       });
-    `, { eval: true });
+    `,
+      { eval: true }
+    );
 
     worker.on("message", block => resolve(block));
     worker.postMessage({
@@ -185,7 +193,7 @@ function mineAsync(address, reward) {
 
 /* ================= ROUTES ================= */
 
-// 🔹 WALLET INFO (dipakai HTML)
+// Wallet info (dipakai HTML)
 app.get("/wallet/:address", (req, res) => {
   const address = req.params.address;
   res.json({
@@ -197,13 +205,32 @@ app.get("/wallet/:address", (req, res) => {
   });
 });
 
-// 🔹 SEND TRANSACTION
+// Mine
+app.post("/mine", async (req, res) => {
+  const { address } = req.body;
+  if (!address) return res.status(400).json({ error: "address required" });
+  if (issuedSupply + DEFAULT_REWARD > MAX_SUPPLY)
+    return res.status(400).json({ error: "max supply reached" });
+
+  const block = await mineAsync(address, DEFAULT_REWARD);
+  executionLayer.push(block);
+  rebuildState();
+  saveChain();
+  broadcast({ type: "NEW_BLOCK", data: block });
+
+  res.json({
+    message: "Block mined",
+    block,
+    balance: balances[address],
+    issuedSupply
+  });
+});
+
+// Send transaction (PoW ringan)
 app.post("/send", (req, res) => {
   const { from, to, amount } = req.body;
-
   if (!from || !to || !amount)
     return res.status(400).json({ error: "invalid tx" });
-
   if ((balances[from] || 0) < amount)
     return res.status(400).json({ error: "insufficient balance" });
 
@@ -216,7 +243,24 @@ app.post("/send", (req, res) => {
     nonce: 0
   };
 
-  block.hash = calculateHash(block);
+  let nonce = 0;
+  let hash;
+  do {
+    nonce++;
+    hash = sha256(
+      JSON.stringify({
+        index: block.index,
+        timestamp: block.timestamp,
+        data: block.data,
+        prevHash: block.prevHash,
+        nonce
+      })
+    );
+  } while (!hash.startsWith("0".repeat(DIFFICULTY)));
+
+  block.nonce = nonce;
+  block.hash = hash;
+
   executionLayer.push(block);
   rebuildState();
   saveChain();
@@ -225,17 +269,17 @@ app.post("/send", (req, res) => {
   res.json({ message: "Transaction confirmed" });
 });
 
-// 🔹 BALANCE (opsional)
+// Balance (opsional)
 app.get("/balance", (req, res) => {
   res.json(balances);
 });
 
-// 🔹 DUMMY CREATE WALLET (biar frontend tidak error)
+// Dummy create-wallet (frontend generator)
 app.get("/create-wallet", (req, res) => {
   res.json({ ok: true });
 });
 
-/* ===== BITCOIN LOCK (RGB STYLE) ===== */
+// BTC lock
 app.post("/btc-lock", (req, res) => {
   const { btcTxid, amount, ktcAddress } = req.body;
   btcLocks.push({ btcTxid, amount, ktcAddress, time: Date.now() });
@@ -243,7 +287,7 @@ app.post("/btc-lock", (req, res) => {
   res.json({ status: "BTC locked (proof recorded)" });
 });
 
-/* ===== BITCOIN ANCHOR ===== */
+// BTC anchor (PoW ringan)
 app.post("/btc-anchor", (req, res) => {
   const { btcTxid } = req.body;
   const commitment = getStateCommitment();
@@ -252,15 +296,29 @@ app.post("/btc-anchor", (req, res) => {
   const block = {
     index: executionLayer.length,
     timestamp: Date.now(),
-    data: {
-      type: "BTC_ANCHOR",
-      btcTxid,
-      commitment
-    },
+    data: { type: "BTC_ANCHOR", btcTxid, commitment },
     prevHash: prev.hash,
     nonce: 0
   };
-  block.hash = calculateHash(block);
+
+  let nonce = 0;
+  let hash;
+  do {
+    nonce++;
+    hash = sha256(
+      JSON.stringify({
+        index: block.index,
+        timestamp: block.timestamp,
+        data: block.data,
+        prevHash: block.prevHash,
+        nonce
+      })
+    );
+  } while (!hash.startsWith("0".repeat(DIFFICULTY)));
+
+  block.nonce = nonce;
+  block.hash = hash;
+
   executionLayer.push(block);
   saveChain();
   broadcast({ type: "NEW_BLOCK", data: block });
@@ -268,7 +326,7 @@ app.post("/btc-anchor", (req, res) => {
   res.json({ anchored: true, commitment });
 });
 
-/* ================= STATUS ================= */
+// Status
 app.get("/status", (req, res) => {
   res.json({
     layer: "Bitcoin Layer-2",
@@ -281,10 +339,12 @@ app.get("/status", (req, res) => {
 
 /* ================= START ================= */
 loadChain();
+if (executionLayer.length === 1) saveChain();
+
 app.listen(HTTP_PORT, () =>
   console.log(`💎 KeytoCoin L2 running on ${HTTP_PORT}`)
 );
 
 const wss = new WebSocket.Server({ port: P2P_PORT });
 wss.on("connection", initConnection);
-console.log("🌐 P2P
+console.log("🌐 P2P running");
